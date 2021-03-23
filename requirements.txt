@@ -1,0 +1,6 @@
+numpy
+matplotlib
+tensorflow
+opencv-python
+gym[atari]
+h5py
