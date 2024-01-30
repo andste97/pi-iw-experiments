@@ -70,11 +70,10 @@ if __name__ == "__main__":
     np.random.seed(seed)
 
     # Instead of env.step() and env.reset(), we'll use TreeActor helper class, which creates a tree and adds nodes to it
-    if type(env_id) is str:
-        env = gym.make(env_id)
-        env_actions = list(range(env.action_space.n))
-        applicable_actions_fn = lambda n: env_actions
-        compute_features_fn = get_gridenvs_BASIC_features_fn(env)
+    env = gym.make(env_id)
+    env_actions = list(range(env.action_space.n))
+    applicable_actions_fn = lambda n: env_actions
+    compute_features_fn = get_gridenvs_BASIC_features_fn(env)
     #else:
     #    domain_path, instance_path = env_id
     #    env = PDDLEnv(PDDLProblemSimulator(parse_problem(domain_path, instance_path)))

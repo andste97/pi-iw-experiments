@@ -15,18 +15,19 @@ class Node:
         self.children = []
 
     def size(self):
+        """Count the number of children of this node, including this node."""
         return np.sum([c.size() for c in self.children]) + 1
 
     def breadth_first(self):
-        current_nodes = [self]
-        while len(current_nodes) > 0:
-            children = []
-            for node in current_nodes:
-                yield node
-                children.extend(node.children)
-            current_nodes = children
+        """Yield all nodes in this tree using breadth first search."""
+        queue = [self]
+        while queue:
+            node = queue.pop(0)
+            yield node
+            queue.extend(node.children)
 
     def depth_first(self):
+        """Yield all nodes in this tree using depth first search."""
         yield self
         for child in self.children:
             for node in child.depth_first():
@@ -39,9 +40,11 @@ class Node:
         return len(self.children) == 0
 
     def add(self, data):
+        """Add a new child node containing data to this node."""
         return Node(data, parent=self)
 
     def make_root(self):
+        """Make this node the root node."""
         if not self.is_root():
             self.parent.children.remove(self)  # just to be consistent
             self.parent = None
@@ -49,6 +52,8 @@ class Node:
             self.update_depths(depth=0)
 
     def update_depths(self, depth):
+        """Update the depth for each node of the tree. Should be called after changes to tree
+        structure such as after setting a new root."""
         delta = depth - self.depth
         for node in self.breadth_first():
             node.depth += delta

@@ -343,27 +343,8 @@ def cstr(s, color=None, bold=False, underline=False):
     return header + s
 
 
-def immediate_subdirectories(path):
-    try:
-        return next(os.walk(path))[1]
-    except StopIteration:
-        return []
-
-
-def atoi(text):
-    return int(text) if text.isdigit() else text
-
-
-def natural_keys(text):
-    '''
-    alist.sort(key=natural_keys) sorts in human order
-    http://nedbatchelder.com/blog/200712/human_sorting.html
-    (See Toothy's implementation in the comments)
-    '''
-    return [atoi(c) for c in re.split(r'(\d+)', text)]
-
-
 class InteractionsCounter:
+    """Counts numbers of interactions with something."""
     def __init__(self, budget):
         self.budget = budget
         self.value = 0
