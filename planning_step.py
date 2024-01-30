@@ -1,6 +1,10 @@
 import numpy as np
 
 def reward_in_tree(tree):
+    """Check if any nodes within this tree contain a reward
+
+    :return True if any nodes within this tree contain a reward, False otherwise
+    """
     iterator = iter(tree)
     next(iterator) # discard root
     for node in iterator:
@@ -40,22 +44,20 @@ def discover_atoms_tree(tree, features_name):
 if __name__ == "__main__":
     import gym
     from IW import IW
-    from bfs import BFS
-    from rollout_IW import RolloutIW
-    from countbased_rollout_iw import CountbasedRolloutIW
     from tree_actor import EnvTreeActor
     import gridenvs.examples # register GE environments to gym
-    import envs
+    from bfs import BFS
+    from rollout_IW import RolloutIW
     from utils import InteractionsCounter
     import timeit
-    from pddl2gym.env import PDDLEnv
-    from pddl2gym.simulator import PDDLProblemSimulator
-    from pddl2gym.utils import parse_problem
+    #from pddl2gym.env import PDDLEnv
+    #from pddl2gym.simulator import PDDLProblemSimulator
+    #from pddl2gym.utils import parse_problem
 
 
     # HYPERPARAMETERS
     # env_id can either be a gym environment identifier or a tuple (domain, instance) pddl path files
-    env_id = "GE_MazeKeyDoor-v0"
+    env_id = "GE_MazeKeyDoor-v2"
     # env_id = ("../pddl-benchmarks/gripper/domain.pddl", "../pddl-benchmarks/gripper/prob01.pddl")
     max_tree_nodes = 10000
     width = 1
@@ -73,19 +75,19 @@ if __name__ == "__main__":
         env_actions = list(range(env.action_space.n))
         applicable_actions_fn = lambda n: env_actions
         compute_features_fn = get_gridenvs_BASIC_features_fn(env)
-    else:
-        domain_path, instance_path = env_id
-        env = PDDLEnv(PDDLProblemSimulator(parse_problem(domain_path, instance_path)))
-        compute_features_fn = get_state_atoms_fn()
-        applicable_actions_fn = lambda n: env.simulator.get_applicable_str_actions(n.data["obs"])
+    #else:
+    #    domain_path, instance_path = env_id
+    #    env = PDDLEnv(PDDLProblemSimulator(parse_problem(domain_path, instance_path)))
+    #    compute_features_fn = get_state_atoms_fn()
+    #    applicable_actions_fn = lambda n: env.simulator.get_applicable_str_actions(n.data["obs"])
 
     interactions = InteractionsCounter(budget=max_tree_nodes)
     actor = EnvTreeActor(env,
                          observe_fns=[compute_features_fn],
                          applicable_actions_fn=applicable_actions_fn)
 
-    # planner = RolloutIW(generate_successor_fn=actor.generate_successor, width=width, branching_factor=env.action_space.n)
-    planner = IW(generate_successor_fn=actor.generate_successor, width=width, ignore_terminal_nodes=True)
+    planner = RolloutIW(generate_successor_fn=actor.generate_successor, width=width, branching_factor=env.action_space.n)
+    # planner = IW(generate_successor_fn=actor.generate_successor, width=width, ignore_terminal_nodes=True)
     # planner = BFS(generate_successor_fn=actor.generate_successor)
     # planner = CountbasedRolloutIW(generate_successor_fn=actor.generate_successor, width=width)
 

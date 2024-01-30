@@ -28,4 +28,3 @@ class Planner:
 
     def plan(self, tree):
         raise NotImplementedError()
-
