@@ -15,6 +15,8 @@ class Planner:
         self._stop_fns.append(stop_fn)
 
     def should_stop(self, *args):
+        """Check all of the registered stop functions to see if
+        any indicate to stop."""
         return any(f(*args) for f in self._stop_fns)
 
     def add_pruning_fn(self, pruning_fn):
