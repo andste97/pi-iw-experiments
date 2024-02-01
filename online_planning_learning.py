@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 from planning_step import gridenvs_BASIC_features, features_to_atoms
 from online_planning import softmax_Q_tree_policy
+import matplotlib.pyplot as plt
 
 
 # Function that will be executed at each interaction with the environment
@@ -23,14 +24,14 @@ def observe_pi_iw_BASIC(env, node):
     gridenvs_BASIC_features(env, node)  # compute BASIC features
 
 
-def planning_step(actor, planner, dataset, policy_fn, tree_budget, cache_subtree, discount_factor):
+def planning_step(actor, planner, dataset, policy_fn, tree_budget, cache_subtree, discount_factor, tree_policy_temp):
     nodes_before_planning = len(actor.tree)
     budget_fn = lambda: len(actor.tree) - nodes_before_planning == tree_budget
     planner.plan(tree=actor.tree,
                  successor_fn=actor.generate_successor,
                  stop_condition_fn=budget_fn,
                  policy_fn=policy_fn)
-    tree_policy = softmax_Q_tree_policy(actor.tree, actor.tree.branching_factor, discount_factor, temp=0)
+    tree_policy = softmax_Q_tree_policy(actor.tree, actor.tree.branching_factor, discount_factor, temp=tree_policy_temp)
     a = sample_pmf(tree_policy)
     prev_root_data, current_root_data = actor.step(a, cache_subtree=cache_subtree)
     dataset.append({"observations": prev_root_data["obs"],
@@ -51,18 +52,20 @@ if __name__ == "__main__":
     # HYPERPARAMETERS
     seed = 0
     env_id = "GE_PathKeyDoor-v0"
-    use_dynamic_feats = False # otherwise BASIC features will be used
-    n_episodes = 5
-    tree_budget = 20
+    # env_id = "GE_MazeKeyDoor-v1"
+    use_dynamic_feats = True # otherwise BASIC features will be used
+    n_episodes = 1000
+    tree_budget = 50
     discount_factor = 0.99
     cache_subtree = True
     batch_size = 32
-    learning_rate = 0.0007
+    learning_rate = 0.0005
     replay_capacity = 1000
     regularization_factor = 0.001
     clip_grad_norm = 40
     rmsprop_decay = 0.99
     rmsprop_epsilon = 0.1
+    tree_policy_temp=1
 
 
     # Set random seed
@@ -83,6 +86,8 @@ if __name__ == "__main__":
     learner = SupervisedPolicy(model, optimizer, regularization_factor=regularization_factor, use_graph=True)
     experience_replay = ExperienceReplay(capacity=replay_capacity)
 
+    solve_steps = []
+
     def network_policy(node, branching_factor):
         return node.data["probs"]
 
@@ -96,7 +101,8 @@ if __name__ == "__main__":
                                         policy_fn=network_policy,
                                         tree_budget=tree_budget,
                                         cache_subtree=cache_subtree,
-                                        discount_factor=discount_factor)
+                                        discount_factor=discount_factor,
+                                        tree_policy_temp=tree_policy_temp)
         if episode_done: actor.reset()
 
     # Interleave planning and learning steps
@@ -112,7 +118,8 @@ if __name__ == "__main__":
                                         policy_fn=network_policy,
                                         tree_budget=tree_budget,
                                         cache_subtree=cache_subtree,
-                                        discount_factor=discount_factor)
+                                        discount_factor=discount_factor,
+                                        tree_policy_temp=tree_policy_temp)
 
         # Learning step
         batch = experience_replay.sample(batch_size)
@@ -121,12 +128,21 @@ if __name__ == "__main__":
 
         steps_cnt += 1
         episode_steps +=1
-        print("\n".join([" ".join(row) for row in env.unwrapped.get_char_matrix(actor.tree.root.data["s"])]),
+        print("\n".join([" ".join(row) for row in
+                         env.unwrapped.world.get_char_matrix(env.unwrapped.get_gridstate(actor.tree.root.data["s"]["state"]))]),
               "Reward: ", r, "Simulator steps:", actor.nodes_generated,
               "Planning steps:", steps_cnt, "Loss:", loss.numpy(), "\n")
         if episode_done:
-            print("Problem solved in %i steps (min 13 steps)."%episode_steps)
+            if r > 0:
+                solve_steps.append(episode_steps)
+            else:
+                solve_steps.append(0)
+
+            print(f'Problem {"solved" if r > 0 else "failed" } in {episode_steps} steps (min 13 steps). Reward: {r}')
             actor.reset()
             episodes_cnt += 1
             episode_steps = 0
             if episodes_cnt < n_episodes: print("\n------- New episode -------")
+
+    plt.plot(solve_steps)
+    plt.savefig("./trend_length_solves.png")

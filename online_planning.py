@@ -36,8 +36,8 @@ if __name__ == "__main__":
 
     # HYPERPARAMETERS
     seed = 0
-    env_id = "GE_PathKeyDoor-v0"
-    max_tree_nodes = 30
+    env_id = "GE_MazeKeyDoor-v0"
+    max_tree_nodes = 50
     discount_factor = 0.99
     cache_subtree = True
 
@@ -63,7 +63,10 @@ if __name__ == "__main__":
 
         episode_done = current_root_data["done"]
         steps_cnt += 1
-        print("\n".join([" ".join(row) for row in env.unwrapped.get_char_matrix(actor.tree.root.data["s"])]),
+        print("\n".join([" ".join(row) for row in
+                         env.unwrapped.world.get_char_matrix(
+                             env.unwrapped.get_gridstate(actor.tree.root.data["s"]["state"]))
+                         ]),
               "Action: ", current_root_data["a"], "Reward: ", current_root_data["r"],
               "Simulator steps:", actor.nodes_generated, "Planning steps:", steps_cnt, "\n")
 

@@ -3,7 +3,14 @@ def features_to_atoms(feature_vector):
 
 # Define how we will extract features
 def gridenvs_BASIC_features(env, node):
-    node.data["features"] = features_to_atoms(env.unwrapped.get_colors().flatten())
+    # TODO: this should also work with env.unwrapped.get_char_matrix(). Might be faster to use chars.
+    node.data["features"] = features_to_atoms(
+        env.unwrapped.world.get_colors(
+            env.unwrapped.get_gridstate(
+                env.unwrapped.clone_state()["state"]
+            )
+        ).flatten()
+    )
 
 if __name__ == "__main__":
     import gym
