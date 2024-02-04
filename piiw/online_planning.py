@@ -1,7 +1,8 @@
 import numpy as np
-from utils import sample_pmf
-from utils import Stats, softmax, InteractionsCounter
-from rollout_IW import RolloutIW
+from utils.utils import sample_pmf
+from utils.utils import softmax
+from piiw.utils.interactions_counter import InteractionsCounter
+from piiw.planners.rollout_IW import RolloutIW
 import timeit
 
 
@@ -31,10 +32,10 @@ def sample_best_action(node, n_actions, discount_factor):
 
 if __name__ == "__main__":
     import gym
-    from IW import IW
-    from tree_actor import EnvTreeActor
+    from piiw.tree_utils.tree_actor import EnvTreeActor
     import gridenvs.examples  # register GE environments to gym
-    from bfs import BFS
+
+    # import gridenvs.examples  # gym registration always gets lost during refactoring
 
     # from pddl2gym.env import PDDLEnv
     # from pddl2gym.simulator import PDDLProblemSimulator

@@ -1,6 +1,6 @@
 import numpy as np
-from tree import Tree
-from utils import env_has_wrapper, display_image_cv2
+from piiw.tree_utils.tree import Tree
+from piiw.utils.utils import env_has_wrapper, display_image_cv2
 import cv2
 
 

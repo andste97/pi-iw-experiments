@@ -1,5 +1,5 @@
 from collections import deque
-from widthbased_planner import BFSWidthPlanner
+from piiw.planners.BFSWidthPlanner import BFSWidthPlanner
 
 
 class IW(BFSWidthPlanner):

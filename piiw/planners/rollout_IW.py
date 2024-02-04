@@ -1,6 +1,6 @@
 import numpy as np
-from utils import sample_pmf
-from widthbased_planner import RolloutLabelsWidthPlanner
+from piiw.utils.utils import sample_pmf
+from piiw.planners.rollout_labels_width_planner import RolloutLabelsWidthPlanner
 
 
 class RolloutIW(RolloutLabelsWidthPlanner):

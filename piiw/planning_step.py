@@ -43,13 +43,13 @@ def discover_atoms_tree(tree, features_name):
 
 if __name__ == "__main__":
     import gym
-    from IW import IW
-    from tree_actor import EnvTreeActor
-    import gridenvs.examples # register GE environments to gym
-    from bfs import BFS
-    from rollout_IW import RolloutIW
+    from piiw.tree_utils.tree_actor import EnvTreeActor
+    from piiw.planners.rollout_IW import RolloutIW
     from utils import InteractionsCounter
     import timeit
+    import gridenvs.examples  # register GE environments to gym
+    # import gridenvs.examples  # gym registration always gets lost during refactoring
+
     #from pddl2gym.env import PDDLEnv
     #from pddl2gym.simulator import PDDLProblemSimulator
     #from pddl2gym.utils import parse_problem
