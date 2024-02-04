@@ -57,10 +57,10 @@ if __name__ == "__main__":
 
     # HYPERPARAMETERS
     # env_id can either be a gym environment identifier or a tuple (domain, instance) pddl path files
-    env_id = "GE_MazeKeyDoor-v2"
+    env_id = "GE_MazeKeyDoor-v0"
     # env_id = ("../pddl-benchmarks/gripper/domain.pddl", "../pddl-benchmarks/gripper/prob01.pddl")
     max_tree_nodes = 10000
-    width = 1
+    width = 1 # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
     seed = 0
 
     nodes_generated = []
@@ -82,7 +82,10 @@ if __name__ == "__main__":
 
     interactions = InteractionsCounter(budget=max_tree_nodes)
     actor = EnvTreeActor(env,
-                         observe_fns=[compute_features_fn],
+                         observe_fns=[
+                            compute_features_fn,
+                            lambda _: interactions.increment()
+                         ],
                          applicable_actions_fn=applicable_actions_fn)
 
     planner = RolloutIW(generate_successor_fn=actor.generate_successor, width=width, branching_factor=env.action_space.n)
@@ -102,6 +105,10 @@ if __name__ == "__main__":
     print("Env:", env_id)
     print("Nodes generated:", nodes_generated)
     print("Time:", time)
+    print("interactions: ", interactions.value)
+
+    actor.render_tree(tree, size=(800, 800))
+    # print(tree.root.str_tree())
 
     if reward_in_tree(tree):
         print("\n================\n|    SOLVED    |\n================")

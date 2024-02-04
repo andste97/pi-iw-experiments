@@ -12,6 +12,8 @@ class WidthPlanner(Planner):
         self.features_name = features_name
 
     def check_update_novelty(self, node, novelty_table, caching):
+        """"Returns true if the node is novel and should not be pruned, if node is not novel,
+        will return false and set node.pruned to true."""
         node.pruned = False
 
         if caching and self.ignore_cached_nodes:

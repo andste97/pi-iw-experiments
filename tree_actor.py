@@ -73,6 +73,10 @@ class EnvTreeActor:
         # self.counter["interactions"] += 1
 
     def step(self, tree, a, cache_subtree):
+        """Set the next node as tree root according to the taken action a
+
+        :returns: Tuple of old root data and next root node."""
+
         assert not tree.root.data["done"], "Trying to take a step, but either the episode is over or hasn't " \
                                                 "started yet. Please use reset()."
         next_node = self._get_next_node(tree, a)
@@ -108,16 +112,23 @@ class EnvTreeActor:
             if len(img.shape) == 2: img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
             display_image_cv2(window_name, img/float(max_pix_value))
 
-    def render_tree(self, tree, size=None, window_name="Render tree"):
+    def render_tree(self, tree, size=None, window_name="Render tree", frametime=10):
         get_img = lambda obs: obs[-1] if type(obs) is list else obs
         root_img = get_img(tree.root.data["obs"])
         image = root_img / 255.0
         for child in tree.root.children:
             for node in child.breadth_first():
                 image += 0.4 / 255.0 * (get_img(node.data["obs"])-root_img)
-        display_image_cv2(window_name, cv2.resize(image, size, interpolation=cv2.INTER_AREA))
+                display_image_cv2(window_name, cv2.resize(image, size, interpolation=cv2.INTER_AREA), block_ms=frametime)
 
     def compute_returns(self, tree, discount_factor, add_value, use_value_all_nodes=False):
+        """Computes rewards for entire tree, starting with last node in tree.
+
+        If add_value is true, the value from predictions is added to """
+
+        # R is the discounted accumulated max reward of the children
+        # with distance discounted by discount_factor
+        # each level deeper gets discounted once by multiplying with discount_factor.
         for node in tree.iter_breadth_first_reverse():
             if node.is_leaf():
                 R = 0
