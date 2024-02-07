@@ -23,11 +23,26 @@ def reward_in_tree(tree):
     return False
 
 
-def get_gridenvs_BASIC_features_fn(env, features_name="features"):
+def get_gridenvs_BASIC_features_fn(env):
     def gridenvs_BASIC_features(node):
-        node.data[features_name] = tuple(enumerate(env.unwrapped.get_char_matrix().flatten()))
+        node.data["features"] = tuple(enumerate(env.unwrapped.get_char_matrix().flatten()))  # compute BASIC features
 
     return gridenvs_BASIC_features
+
+def get_compute_policy_output_fn(model):
+    def policy_output(node):
+        # it's much faster to compute the policy output when expanding the state
+        # than every time the planner tries to accesss the state (which is what the
+        # happens when you put the model answer into the network_policy fn)
+        x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32)
+        x = x.permute(0, 3, 1, 2).contiguous()
+
+        with torch.no_grad():
+            logits = model(x)
+        node.data["probs"] = np.array(torch.nn.functional.softmax(logits[0], dim=1).data).ravel()
+
+    return policy_output
+
 
 # Function that will be executed at each interaction with the environment
 # def observe_pi_iw_dynamic(model, node):
@@ -37,16 +52,16 @@ def get_gridenvs_BASIC_features_fn(env, features_name="features"):
 #     node.data["features"] = features_to_atoms(features.numpy().ravel().astype(np.bool)) # discretization -> bool
 
 
+def network_policy(node):
+        return node.data["probs"]
+
+
 def sample_best_action(node, n_actions, discount_factor):
     Q = np.empty(n_actions, dtype=np.float32)
     Q.fill(-np.inf)
     for child in node.children:
         Q[child.data["a"]] = child.data["r"] + discount_factor * child.data["R"]
     return Q
-
-
-def network_policy(node):
-    return node.data["probs"]
 
 
 def planning_step(actor,
@@ -83,17 +98,16 @@ def planning_step(actor,
     version_base="1.3",
 )
 def action(config):
-    # HYPERPARAMETERS
-    # env_id can either be a gym environment identifier or a tuple (domain, instance) pddl path files
-    # env_id = ("../pddl-benchmarks/gripper/domain.pddl", "../pddl-benchmarks/gripper/prob01.pddl")
-
     frametime = 1  # in milliseconds to display renderings
 
     nodes_generated = []
     times = []
     rewards = []
     start_time = timeit.default_timer()
+
+    # set seeds, numpy for planner, torch for policy
     np.random.seed(config.train.seed)
+    torch.manual_seed(config.train.seed)
 
     # Instead of env.step() and env.reset(), we'll use TreeActor helper class, which creates a tree and adds nodes to it
     env = gym.make(config.train.env_id)
@@ -129,28 +143,19 @@ def action(config):
     criterion = torch.nn.CrossEntropyLoss()
 
     interactions = InteractionsCounter(budget=config.plan.interactions_budget)
-    total_interactions = InteractionsCounter(budget=1500000)
+    total_interactions = InteractionsCounter(budget=config.train.total_interaction_budget)
 
     # create observe functions
     increase_interactions_fn = lambda node: interactions.increment()
     increase_total_interactions_fn = lambda node: total_interactions.increment()
-    compute_features_fn = get_gridenvs_BASIC_features_fn(env)
 
     env_actions = list(range(env.action_space.n))
     applicable_actions_fn = lambda n: env_actions
 
-    def observe_pi_iw_BASIC(node):
-        x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32)
-        x = x.permute(0, 3, 1, 2).contiguous()
-
-        with torch.no_grad():
-            logits = model(x)
-        node.data["probs"] = np.array(torch.nn.functional.softmax(logits[0]).data).ravel()
-        node.data["features"] = tuple(enumerate(env.unwrapped.get_char_matrix().flatten()))  # compute BASIC features
-
     actor = EnvTreeActor(env,
                          observe_fns=[
-                             observe_pi_iw_BASIC,
+                             get_gridenvs_BASIC_features_fn(env),
+                             get_compute_policy_output_fn(model),
                              increase_interactions_fn,
                              increase_total_interactions_fn
                          ],
@@ -182,7 +187,8 @@ def action(config):
             discount_factor=config.plan.discount_factor,
             n_action_space=env.action_space.n
         )
-        if episode_done: actor.reset()
+        if episode_done:
+            tree = actor.reset()
 
     print("beginning training")
     model.train()

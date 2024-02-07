@@ -1,7 +1,6 @@
 from collections import defaultdict
 
 import numpy as np
-import tensorflow as tf
 
 from piiw.utils.utils import logger, save_hdf5
 
@@ -12,9 +11,9 @@ class Stats:
         self.last_step = 0
         self.stats = defaultdict(lambda: {'x': list(), 'y': list()})
         self.chunk = 0
-        if use_tensorboard:
-            assert self.log_path is not None, "A logging path is needed to use tensorboard."
-            self.tf_writer = tf.summary.create_file_writer(log_path)
+        #if use_tensorboard:
+        #    assert self.log_path is not None, "A logging path is needed to use tensorboard."
+        #    self.tf_writer = tf.summary.create_file_writer(log_path)
 
     def increment(self, keys, step):
         if type(keys) not in (list, tuple):
@@ -31,11 +30,11 @@ class Stats:
             assert not ' ' in k
             self.stats[k]['x'].append(step)
             self.stats[k]['y'].append(v)
-            try:
-                with self.tf_writer.as_default():
-                    tf.summary.scalar(k, v, step=step)
-            except AttributeError:
-                pass # Tensorboard not enabled
+            #try:
+                #with self.tf_writer.as_default():
+                #    tf.summary.scalar(k, v, step=step)
+            #except AttributeError:
+            #    pass # Tensorboard not enabled
 
     def get_last(self, k):
         return self.stats[k]['y'][-1]

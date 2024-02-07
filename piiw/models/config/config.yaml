@@ -21,11 +21,12 @@ plan:
   cache_subtree: True
 
 train:
-  env_id: "GE_MazeKeyDoor-v0"
+  env_id: "GE_MazeKeyDoor-v2"
   seed: 0
   batch_size: 32
   learning_rate: 0.0007
   replay_capacity: 1000
+  total_interaction_budget: 100000
   l2_reg_factor: 0.001
   clip_grad_norm: 40
   rmsprop_alpha: 0.99 # same as rho in tf
