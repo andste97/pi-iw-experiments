@@ -1,4 +1,4 @@
-from utils import random_index
+from piiw.utils.utils import random_index
 
 
 class ExperienceReplay:
