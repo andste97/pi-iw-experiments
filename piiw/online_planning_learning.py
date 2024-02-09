@@ -3,7 +3,7 @@ import numpy as np
 import torch.optim
 
 from piiw.data.experience_replay import ExperienceReplay
-from utils.utils import sample_pmf
+from utils.utils import sample_pmf, reward_in_tree
 from utils.utils import softmax
 from piiw.utils.interactions_counter import InteractionsCounter
 from piiw.planners.rollout_IW import RolloutIW
@@ -12,15 +12,6 @@ import gym
 from piiw.tree_utils.tree_actor import EnvTreeActor
 from piiw.models.mnih_2013 import Mnih2013
 import gridenvs.examples  # register GE environments to gym
-
-
-def reward_in_tree(tree):
-    iterator = iter(tree)
-    next(iterator)  # discard root
-    for node in iterator:
-        if node.data["r"] > 0:
-            return True
-    return False
 
 
 def get_gridenvs_BASIC_features_fn(env):
@@ -86,9 +77,14 @@ def planning_step(actor,
     policy_output = softmax(step_Q, temp=0)
     step_action = sample_pmf(policy_output)
 
+    #print("action: ", step_action)
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
-    dataset.append({"observations": prev_root_data["obs"],
-                    "target_policy": policy_output})
+
+    tensor_pytorch_format = torch.tensor(prev_root_data["obs"], dtype=torch.float32)
+    tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
+
+    dataset.append({"observations": tensor_pytorch_format,
+                    "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
     return current_root.data["r"], current_root.data["done"]
 
 
@@ -213,13 +209,11 @@ def action(config):
 
             # tensors were created for tensorflow, which has channel-last input shape
             # but pytorch has channel-first input shape.
-            tensor_pytorch_format = torch.tensor(np.array(batch["observations"]), dtype=torch.float32)
-            tensor_pytorch_format = tensor_pytorch_format.permute(0, 3, 1, 2).contiguous()
+            observations = batch["observations"]
+            target_policy = batch["target_policy"]
 
-            batch_tensor = torch.tensor(np.array(batch["target_policy"]), dtype=torch.float32)
-
-            logits = model(tensor_pytorch_format)
-            loss = criterion(logits[0], batch_tensor)
+            logits = model(observations)
+            loss = criterion(logits[0], target_policy)
             loss.backward()
             optimizer.step()
 

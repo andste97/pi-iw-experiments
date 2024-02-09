@@ -1,19 +1,9 @@
 import numpy as np
-from utils.utils import sample_pmf
+from utils.utils import sample_pmf, reward_in_tree
 from utils.utils import softmax
 from piiw.utils.interactions_counter import InteractionsCounter
 from piiw.planners.rollout_IW import RolloutIW
 import timeit
-
-
-def reward_in_tree(tree):
-    iterator = iter(tree)
-    next(iterator)  # discard root
-    for node in iterator:
-        if node.data["r"] > 0:
-            return True
-    return False
-
 
 def get_gridenvs_BASIC_features_fn(env, features_name="features"):
     def gridenvs_BASIC_features(node):

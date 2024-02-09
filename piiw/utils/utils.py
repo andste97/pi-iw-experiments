@@ -251,4 +251,10 @@ def cstr(s, color=None, bold=False, underline=False):
         s += '\033[0m'
     return header + s
 
-
+def reward_in_tree(tree):
+    iterator = iter(tree)
+    next(iterator)  # discard root
+    for node in iterator:
+        if node.data["r"] > 0:
+            return True
+    return False

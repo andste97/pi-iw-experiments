@@ -1,3 +1,4 @@
+import torch
 import torch.nn.functional as F
 from torch import nn, flatten
 
@@ -38,7 +39,11 @@ class Mnih2013(nn.Module):
         if self.add_value:
             self.value_head = nn.Linear(fc1_out_features, 1)
 
-    def forward(self, x, output_features=False):
+    def forward(self, x: torch.Tensor, output_features=False):
+
+        # Make sure we're feeding in the correct number of channels
+        assert(x.shape[1] == self.conv1.in_channels)
+
         # Apply convolutional layers with ReLU activations
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
