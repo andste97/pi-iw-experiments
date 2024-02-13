@@ -12,12 +12,14 @@ class ExperienceDataset(IterableDataset):
         sample_size: number of experiences to sample at a time
     """
 
-    def __init__(self, buffer: ExperienceReplay, sample_size) -> None:
+    def __init__(self, buffer: ExperienceReplay, sample_size, episode_length) -> None:
         self.buffer = buffer
         self.sample_size = sample_size
+        self.episode_length = episode_length
 
     def __iter__(self):
-        _, batch = self.buffer.sample(self.sample_size)
-
-        for i in range(len(batch["observations"])):
-            yield batch["observations"][i], batch["target_policy"][i]
+        # this is to fix the number of epochs pytorch has
+        for i in range(int(self.episode_length/self.sample_size)):
+            _, batch = self.buffer.sample(self.sample_size)
+            for j in range(len(batch["observations"])):
+                yield batch["observations"][i], batch["target_policy"][i]

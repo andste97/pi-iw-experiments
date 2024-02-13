@@ -5,6 +5,7 @@ from torch import nn, flatten, optim
 import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from tqdm import tqdm
 
 from piiw.models.mnih_2013 import Mnih2013
 import gym
@@ -25,7 +26,6 @@ class LightningDQN(pl.LightningModule):
                  config):
 
         super().__init__()
-        self.automatic_optimization = False
         self.config = config
 
         self.env = gym.make(config.train.env_id)
@@ -83,7 +83,7 @@ class LightningDQN(pl.LightningModule):
         self.tree = self.actor.reset()
         self.episode_step = 0
         self.episodes = 0
-        self.initialize_experience_replay()
+        self.initialize_experience_replay(self.config.train.batch_size)
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
@@ -97,9 +97,6 @@ class LightningDQN(pl.LightningModule):
         )
         return [optimizer]
     def training_step(self, batch, batch_idx):
-        opt = self.optimizers()
-        opt.zero_grad()
-
         observations, target_policy = batch
 
         r, episode_done = planning_step(
@@ -119,12 +116,12 @@ class LightningDQN(pl.LightningModule):
         logits = self.model(observations)[0]
         loss = self.criterion(logits, target_policy)
 
-        loss.backward()
-        opt.step()
-
         if episode_done:
             self.episodes += 1
             print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
+            self.log('episode: ', float(self.episodes), logger=True, on_epoch=True)
+            self.log('episode_step', float(self.episode_step), logger=True, on_epoch=True)
+            self.log('total_interactions', float(self.total_interactions.value), logger=True, on_epoch=True)
             self.tree = self.actor.reset()
             self.episode_step = 0
 
@@ -135,9 +132,14 @@ class LightningDQN(pl.LightningModule):
         env_actions = list(range(self.env.action_space.n))
         return env_actions
 
-    def initialize_experience_replay(self):
-        print("Initializing experience replay", flush=True)
-        while len(self.experience_replay) < self.config.train.batch_size:
+    def initialize_experience_replay(self, warmup_length):
+        pbar = tqdm(total=warmup_length, desc="Initializing experience replay")
+
+        # make sure we cannot get stuck in infinite loop
+        assert self.config.train.replay_capacity >= warmup_length
+
+        while len(self.experience_replay) < warmup_length:
+            cur_length = len(self.experience_replay)
             r, episode_done = planning_step(
                 actor=self.actor,
                 planner=self.planner,
@@ -148,6 +150,7 @@ class LightningDQN(pl.LightningModule):
                 discount_factor=self.config.plan.discount_factor,
                 n_action_space=self.env.action_space.n
             )
+            pbar.update(len(self.experience_replay) - cur_length)
             if episode_done:
                 self.tree = self.actor.reset()
 
@@ -155,7 +158,7 @@ class LightningDQN(pl.LightningModule):
 
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
-        dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size)
+        dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size, self.config.train.episode_length)
         dataloader = DataLoader(
             dataset=dataset,
             batch_size=self.config.train.batch_size,
@@ -185,7 +188,6 @@ def planning_step(actor,
     policy_output = softmax(step_Q, temp=0)
     step_action = sample_pmf(policy_output)
 
-    #print("action: ", step_action)
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
     tensor_pytorch_format = torch.tensor(prev_root_data["obs"], dtype=torch.float32)

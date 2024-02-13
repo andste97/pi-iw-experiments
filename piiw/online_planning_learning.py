@@ -172,6 +172,8 @@ def action(config):
 
     # filling up the experience dataset
     print("Initializing experience replay", flush=True)
+    assert config.train.replay_capacity >= config.train.batch_size
+    assert config.train.replay_capacity >= config.train.episode_length
     while len(experience_replay) < config.train.batch_size:
         r, episode_done = planning_step(
             actor=actor,
