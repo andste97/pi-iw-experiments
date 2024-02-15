@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
 import torch.nn.functional as F
+from omegaconf import OmegaConf
 from torch import nn, flatten, optim
 import torch
 from torch.utils.data import DataLoader
@@ -10,6 +11,7 @@ from tqdm import tqdm
 from piiw.models.mnih_2013 import Mnih2013
 import gym
 import numpy as np
+import wandb
 
 from piiw.data.ExperienceDataset import ExperienceDataset
 from piiw.data.experience_replay import ExperienceReplay
@@ -25,12 +27,14 @@ class LightningDQN(pl.LightningModule):
     def __init__(self,
                  config):
 
+        #self.save_hyperparameters(OmegaConf.to_container(config))
+
         super().__init__()
         self.config = config
 
         self.env = gym.make(config.train.env_id)
 
-        self.model = Mnih2013(
+        model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
             conv1_kernel_size=config.model.conv1_kernel_size,
@@ -43,6 +47,8 @@ class LightningDQN(pl.LightningModule):
             num_logits=self.env.action_space.n,
             add_value=config.model.add_value
         )
+
+        self.model = model.to(self.device)
 
         self.experience_replay = ExperienceReplay(
             capacity=config.train.replay_capacity,
@@ -64,12 +70,12 @@ class LightningDQN(pl.LightningModule):
             self.env,
             observe_fns=[
                 get_gridenvs_BASIC_features_fn(self.env),
-                get_compute_policy_output_fn(self.model),
+                self.get_compute_policy_output_fn(self.model),
                 increase_interactions_fn,
                 increase_total_interactions_fn
             ],
             applicable_actions_fn=self.applicable_actions_fn
-       )
+        )
 
         self.planner = RolloutIW(
             policy_fn=network_policy,
@@ -96,6 +102,7 @@ class LightningDQN(pl.LightningModule):
             # use this for l2 regularization to replace TF regularization implementation
         )
         return [optimizer]
+
     def training_step(self, batch, batch_idx):
         observations, target_policy = batch
 
@@ -113,20 +120,24 @@ class LightningDQN(pl.LightningModule):
         # tensors were created for tensorflow, which has channel-last input shape
         # but pytorch has channel-first input shape.
 
-        logits = self.model(observations)[0]
+        logits = self.model(observations)
         loss = self.criterion(logits, target_policy)
 
         if episode_done:
             self.episodes += 1
-            print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
-            self.log('episode: ', float(self.episodes), logger=True, on_epoch=True)
-            self.log('episode_step', float(self.episode_step), logger=True, on_epoch=True)
-            self.log('total_interactions', float(self.total_interactions.value), logger=True, on_epoch=True)
+            #print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
+            self.log_dict({'episode': float(self.episodes),
+                            'episode_steps': float(self.episode_step),
+                           'episode_reward': r})
             self.tree = self.actor.reset()
             self.episode_step = 0
 
+        # Log loss and metric
+        self.log_dict({"train/loss": loss,
+                       'total_interactions': float(self.total_interactions.value)})
+
         self.episode_step += 1
-        return OrderedDict({'loss': loss, 'episode_steps:': self.episode_step})
+        return OrderedDict({'loss': loss})
 
     def applicable_actions_fn(self):
         env_actions = list(range(self.env.action_space.n))
@@ -158,12 +169,27 @@ class LightningDQN(pl.LightningModule):
 
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
-        dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size, self.config.train.episode_length)
+        dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size,
+                                    self.config.train.episode_length)
         dataloader = DataLoader(
             dataset=dataset,
             batch_size=self.config.train.batch_size,
         )
         return dataloader
+
+    def get_compute_policy_output_fn(self, model):
+        def policy_output(node):
+            # it's much faster to compute the policy output when expanding the state
+            # than every time the planner tries to accesss the state (which is what the
+            # happens when you put the model answer into the network_policy fn)
+            x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32, device=self.device)
+            x = x.permute(0, 3, 1, 2).contiguous()
+
+            with torch.no_grad():
+                logits = model(x)
+            node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
+
+        return policy_output
 
 
 def planning_step(actor,
@@ -204,21 +230,6 @@ def get_gridenvs_BASIC_features_fn(env):
             enumerate(env.unwrapped.get_char_matrix().flatten()))  # compute BASIC features
 
     return gridenvs_BASIC_features
-
-
-def get_compute_policy_output_fn(model):
-    def policy_output(node):
-        # it's much faster to compute the policy output when expanding the state
-        # than every time the planner tries to accesss the state (which is what the
-        # happens when you put the model answer into the network_policy fn)
-        x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32)
-        x = x.permute(0, 3, 1, 2).contiguous()
-
-        with torch.no_grad():
-            logits = model(x)
-        node.data["probs"] = np.array(torch.nn.functional.softmax(logits[0], dim=1).data).ravel()
-
-    return policy_output
 
 
 def network_policy(node):

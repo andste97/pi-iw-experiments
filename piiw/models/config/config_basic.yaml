@@ -12,7 +12,7 @@ model:
   fc1_out_features: 256 # also output layer in_features
   # num_logits: 5 # This value needs to be set dynamically as it depends on the
                   # size of the environment action space. For gridenvs: 5
-  add_value: True
+  add_value: False
 
 plan:
   interactions_budget: 50

@@ -4,9 +4,9 @@ import torch.optim
 import wandb
 from omegaconf import OmegaConf
 from pytorch_lightning.loggers import WandbLogger
-from lightning.pytorch.loggers import TensorBoardLogger
 
-from piiw.models.pytorch_model import LightningDQN
+from piiw.models.lightning_model_basic import LightningDQN
+from piiw.models.lightning_model_dynamic import LightningDQNDynamic
 import timeit
 import gym
 import gridenvs.examples  # register GE environments to gym
@@ -16,10 +16,12 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config.yaml",
+    config_name="config_basic.yaml",
     version_base="1.3",
 )
 def main(config):
+    run = wandb.init()
+
     frametime = 1  # in milliseconds to display renderings
 
     nodes_generated = []
@@ -31,14 +33,15 @@ def main(config):
     np.random.seed(config.train.seed)
     torch.manual_seed(config.train.seed)
 
+    wandb.config(OmegaConf.to_container())
     logger = WandbLogger(log_model=True)
 
-    wandb.config.update(OmegaConf.to_container(config))
-
     model = LightningDQN(config)
+    logger.watch(model)
 
     trainer = pl.Trainer(
-        max_epochs=10000,
+        accelerator="cuda",
+        max_epochs=1000,
         logger=logger
     )
 
@@ -48,5 +51,4 @@ def main(config):
 
 
 if __name__ == "__main__":
-    wandb.init()
     main()

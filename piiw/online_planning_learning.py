@@ -90,7 +90,7 @@ def planning_step(actor,
 
 @hydra.main(
     config_path="models/config",
-    config_name="config.yaml",
+    config_name="config_basic.yaml",
     version_base="1.3",
 )
 def action(config):

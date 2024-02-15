@@ -40,3 +40,6 @@ class ExperienceReplay:
     def sample(self, size):
         indices = random_index(len(self), size, replace=False)
         return indices, self.get_batch(indices)
+
+    def sample_one(self):
+        return self._data[np.random.choice(len(self._data))]
