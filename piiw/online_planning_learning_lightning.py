@@ -16,11 +16,11 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config_basic.yaml",
+    config_name="config_dynamic.yaml",
     version_base="1.3",
 )
 def main(config):
-    run = wandb.init()
+    run = wandb.init(config=OmegaConf.to_container(config))
 
     frametime = 1  # in milliseconds to display renderings
 
@@ -33,10 +33,9 @@ def main(config):
     np.random.seed(config.train.seed)
     torch.manual_seed(config.train.seed)
 
-    wandb.config(OmegaConf.to_container())
     logger = WandbLogger(log_model=True)
 
-    model = LightningDQN(config)
+    model = LightningDQNDynamic(config)
     logger.watch(model)
 
     trainer = pl.Trainer(

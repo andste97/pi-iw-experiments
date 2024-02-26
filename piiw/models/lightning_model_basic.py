@@ -26,9 +26,6 @@ class LightningDQN(pl.LightningModule):
 
     def __init__(self,
                  config):
-
-        #self.save_hyperparameters(OmegaConf.to_container(config))
-
         super().__init__()
         self.config = config
 
@@ -45,7 +42,8 @@ class LightningDQN(pl.LightningModule):
             fc1_in_features=config.model.fc1_in_features,
             fc1_out_features=config.model.fc1_out_features,
             num_logits=self.env.action_space.n,
-            add_value=config.model.add_value
+            add_value=config.model.add_value,
+            output_features=config.model.output_features
         )
 
         self.model = model.to(self.device)

@@ -27,8 +27,6 @@ class LightningDQNDynamic(pl.LightningModule):
     def __init__(self,
                  config):
 
-        #self.save_hyperparameters(OmegaConf.to_container(config))
-
         super().__init__()
         self.config = config
 
@@ -45,7 +43,8 @@ class LightningDQNDynamic(pl.LightningModule):
             fc1_in_features=config.model.fc1_in_features,
             fc1_out_features=config.model.fc1_out_features,
             num_logits=self.env.action_space.n,
-            add_value=config.model.add_value
+            add_value=config.model.add_value,
+            output_features=config.model.output_features
         )
 
         self.model = model.to(self.device)
@@ -119,7 +118,7 @@ class LightningDQNDynamic(pl.LightningModule):
         # tensors were created for tensorflow, which has channel-last input shape
         # but pytorch has channel-first input shape.
 
-        logits = self.model(observations)[0]
+        logits, features = self.model(observations)
         loss = self.criterion(logits, target_policy)
 
         if episode_done:
