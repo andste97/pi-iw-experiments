@@ -18,10 +18,10 @@ class Mnih2013(nn.Module):
                  fc1_out_features,
                  num_logits,
                  add_value,
-                 output_features):
+                 use_dynamic_features):
         super().__init__()
         self.add_value = add_value
-        self.output_features = output_features
+        self.use_dynamic_features = use_dynamic_features
 
         self.conv1 = nn.Conv2d(in_channels=conv1_in_channels,
                                out_channels=conv1_out_channels,
@@ -61,12 +61,12 @@ class Mnih2013(nn.Module):
 
         if self.add_value:
             value = flatten(self.value_head(x))  # Flatten the value output
-            if self.output_features:
+            if self.use_dynamic_features:
                 return logits, value, x
             else:
                 return logits, value
         else:
-            if self.output_features:
+            if self.use_dynamic_features:
                 return logits, x
             else:
                 return logits

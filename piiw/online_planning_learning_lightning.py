@@ -8,6 +8,7 @@ from pytorch_lightning.loggers import WandbLogger
 from piiw.models.lightning_model_basic import LightningDQN
 from piiw.models.lightning_model_dynamic import LightningDQNDynamic
 import timeit
+from datetime import datetime
 import gym
 import gridenvs.examples  # register GE environments to gym
 
@@ -16,11 +17,14 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config_dynamic.yaml",
+    config_name="config_atari_dynamic.yaml",
     version_base="1.3",
 )
 def main(config):
-    run = wandb.init(config=OmegaConf.to_container(config))
+    run = wandb.init(
+        config=OmegaConf.to_container(config),
+        id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}'
+    )
 
     frametime = 1  # in milliseconds to display renderings
 
@@ -30,18 +34,25 @@ def main(config):
     start_time = timeit.default_timer()
 
     # set seeds, numpy for planner, torch for policy
-    np.random.seed(config.train.seed)
-    torch.manual_seed(config.train.seed)
+    pl.seed_everything(config.train.seed)
+    #np.random.seed(config.train.seed)
+    #torch.manual_seed(config.train.seed)
 
     logger = WandbLogger(log_model=True)
 
-    model = LightningDQNDynamic(config)
+
+    # choose wither to uses dynamic or BASIC features
+    if config.model.use_dynamic_features:
+        model = LightningDQNDynamic(config)
+    else:
+        model = LightningDQN(config)
     logger.watch(model)
 
     trainer = pl.Trainer(
         accelerator="cuda",
-        max_epochs=1000,
-        logger=logger
+        max_epochs=config.train.max_epochs,
+        logger=logger,
+        deterministic="warn"
     )
 
     trainer.fit(model)

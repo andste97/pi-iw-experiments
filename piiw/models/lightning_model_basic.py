@@ -43,7 +43,7 @@ class LightningDQN(pl.LightningModule):
             fc1_out_features=config.model.fc1_out_features,
             num_logits=self.env.action_space.n,
             add_value=config.model.add_value,
-            output_features=config.model.output_features
+            use_dynamic_features=config.model.use_dynamic_features
         )
 
         self.model = model.to(self.device)

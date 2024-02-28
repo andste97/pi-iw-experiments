@@ -38,7 +38,7 @@ def get_compute_policy_output_fn(model):
 # Function that will be executed at each interaction with the environment
 # def observe_pi_iw_dynamic(model, node):
 #     x = tf.constant(np.expand_dims(node.data["obs"], axis=0).astype(np.float32))
-#     logits, features = model(x, output_features=True)
+#     logits, features = model(x, use_dynamic_features=True)
 #     node.data["probs"] = tf.nn.softmax(logits).numpy().ravel()
 #     node.data["features"] = features_to_atoms(features.numpy().ravel().astype(np.bool)) # discretization -> bool
 

@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from tqdm import tqdm
 
+from piiw.atari_utils.make_env import make_env
 from piiw.models.mnih_2013 import Mnih2013
 import gym
 import numpy as np
@@ -30,8 +31,10 @@ class LightningDQNDynamic(pl.LightningModule):
         super().__init__()
         self.config = config
 
-        self.env = gym.make(config.train.env_id)
-
+        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length, add_downsampling=False,
+                               downsampling_tiles_w=None, downsampling_tiles_h=None,
+                               downsampling_pix_values=None,
+                               atari_frameskip=config.train.atari_frameskip)
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
@@ -44,7 +47,7 @@ class LightningDQNDynamic(pl.LightningModule):
             fc1_out_features=config.model.fc1_out_features,
             num_logits=self.env.action_space.n,
             add_value=config.model.add_value,
-            output_features=config.model.output_features
+            use_dynamic_features=config.model.use_dynamic_features
         )
 
         self.model = model.to(self.device)
@@ -68,7 +71,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.actor = EnvTreeActor(
             self.env,
             observe_fns=[
-                self.get_compute_dynamic_policy_output_fn(model),
+                self.get_compute_dynamic_policy_output_fn(model, preproc_obs_fn),
                 increase_interactions_fn,
                 increase_total_interactions_fn
             ],
@@ -175,10 +178,9 @@ class LightningDQNDynamic(pl.LightningModule):
         )
         return dataloader
 
-    def get_compute_dynamic_policy_output_fn(self, model):
+    def get_compute_dynamic_policy_output_fn(self, model, preproc_obs_fn):
         def dynamic_policy_output(node):
-            x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32, device=self.device)
-            x = x.permute(0, 3, 1, 2).contiguous()
+            x = torch.tensor(np.expand_dims(preproc_obs_fn(node.data["obs"]), axis=0), dtype=torch.float32, device=self.device)
 
             with torch.no_grad():
                 logits, features = model(x)

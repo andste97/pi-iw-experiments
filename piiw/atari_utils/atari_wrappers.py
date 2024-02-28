@@ -127,7 +127,7 @@ class Downsampling(Wrapper):
 
 class FullCloneRestore(Wrapper):
     def clone_state(self):
-        return self.env.clone_full_state()
+        return self.env.clone_state(include_rng=True)
 
     def restore_state(self, state):
         self.env.restore_full_state(state)
