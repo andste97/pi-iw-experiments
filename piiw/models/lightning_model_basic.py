@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from tqdm import tqdm
 
+from piiw.atari_utils.make_env import make_env
 from piiw.models.mnih_2013 import Mnih2013
 import gym
 import numpy as np
@@ -28,9 +29,12 @@ class LightningDQN(pl.LightningModule):
                  config):
         super().__init__()
         self.config = config
+        self.save_hyperparameters(OmegaConf.to_container(config))
 
-        self.env = gym.make(config.train.env_id)
-
+        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length, add_downsampling=False,
+                               downsampling_tiles_w=None, downsampling_tiles_h=None,
+                               downsampling_pix_values=None,
+                               atari_frameskip=config.train.atari_frameskip)
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
@@ -68,7 +72,7 @@ class LightningDQN(pl.LightningModule):
             self.env,
             observe_fns=[
                 get_gridenvs_BASIC_features_fn(self.env),
-                self.get_compute_policy_output_fn(self.model),
+                self.get_compute_policy_output_fn(self.model, preproc_obs_fn),
                 increase_interactions_fn,
                 increase_total_interactions_fn
             ],
@@ -175,13 +179,12 @@ class LightningDQN(pl.LightningModule):
         )
         return dataloader
 
-    def get_compute_policy_output_fn(self, model):
+    def get_compute_policy_output_fn(self, model, preproc_obs_fn):
         def policy_output(node):
             # it's much faster to compute the policy output when expanding the state
             # than every time the planner tries to accesss the state (which is what the
             # happens when you put the model answer into the network_policy fn)
-            x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32, device=self.device)
-            x = x.permute(0, 3, 1, 2).contiguous()
+            x = torch.tensor(np.expand_dims(preproc_obs_fn(node.data["obs"]), axis=0), dtype=torch.float32, device=self.device)
 
             with torch.no_grad():
                 logits = model(x)

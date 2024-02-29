@@ -27,9 +27,9 @@ class LightningDQNDynamic(pl.LightningModule):
 
     def __init__(self,
                  config):
-
         super().__init__()
         self.config = config
+        self.save_hyperparameters(OmegaConf.to_container(config))
 
         self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length, add_downsampling=False,
                                downsampling_tiles_w=None, downsampling_tiles_h=None,
@@ -162,6 +162,7 @@ class LightningDQNDynamic(pl.LightningModule):
                 discount_factor=self.config.plan.discount_factor,
                 n_action_space=self.env.action_space.n
             )
+            self.actor.render(size=(800, 800), tree=self.tree)
             pbar.update(len(self.experience_replay) - cur_length)
             if episode_done:
                 self.tree = self.actor.reset()
@@ -214,8 +215,9 @@ def planning_step(actor,
 
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
-    tensor_pytorch_format = torch.tensor(prev_root_data["obs"], dtype=torch.float32)
-    tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
+    tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
+    #tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
+    #
 
     dataset.append({"observations": tensor_pytorch_format,
                     "target_policy": torch.tensor(policy_output, dtype=torch.float32)})

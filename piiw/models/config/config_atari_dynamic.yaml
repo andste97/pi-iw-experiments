@@ -16,7 +16,7 @@ model:
   use_dynamic_features: True # set this to true to add dynamic features to model output
 
 plan:
-  interactions_budget: 50
+  interactions_budget: 1000
   width: 1  # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
   discount_factor: 0.99
   cache_subtree: True

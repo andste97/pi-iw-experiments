@@ -21,11 +21,6 @@ import pytorch_lightning as pl
     version_base="1.3",
 )
 def main(config):
-    run = wandb.init(
-        config=OmegaConf.to_container(config),
-        id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}'
-    )
-
     frametime = 1  # in milliseconds to display renderings
 
     nodes_generated = []
@@ -35,10 +30,11 @@ def main(config):
 
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
-    #np.random.seed(config.train.seed)
-    #torch.manual_seed(config.train.seed)
 
-    logger = WandbLogger(log_model=True)
+    logger = WandbLogger(
+        log_model=True, project="pi-iw-experiments-piiw",
+        id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}'
+    )
 
 
     # choose wither to uses dynamic or BASIC features
@@ -49,13 +45,16 @@ def main(config):
     logger.watch(model)
 
     trainer = pl.Trainer(
-        accelerator="cuda",
+        accelerator="auto",
         max_epochs=config.train.max_epochs,
         logger=logger,
-        deterministic="warn"
+        deterministic="warn",
+        enable_checkpointing=True
     )
 
-    trainer.fit(model)
+    trainer.fit(
+        model
+    )
     # save logged data
     logger.save()
 
