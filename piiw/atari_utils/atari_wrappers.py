@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 from collections import deque
 
+from piiw.utils.utils import display_image_cv2
+
 
 # Gym wrapper with clone/restore state
 class Wrapper(gym.Wrapper):
@@ -25,6 +27,8 @@ class ResizeImage(Wrapper):
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
+        #img = cv2.resize(observation, self.env.unwrapped.ale.getScreenDims(), interpolation=cv2.INTER_AREA)
+        #display_image_cv2("Rendering", img, block_ms=200)
         return self.resize_fn(observation), reward, done, info
 
 
@@ -137,20 +141,16 @@ def is_atari_env(env):
     import gym.envs.atari
     return isinstance(env.unwrapped, gym.envs.atari.AtariEnv)
 
-
-def wrap_atari_env(env, frameskip, max_steps, add_downsampling, downsampling_tiles_w, downsampling_tiles_h, downsampling_pix_values):
+def wrap_atari_env(env, frameskip, max_steps):
     # To get grayscale images, instead of wrapping the env, we modify the _get_obs function
     # this way, ale.getScreenGrayscale function is called instead of ale.getScreenRGB2
     # The RGB image will still show when rendering.
-    screen_width, screen_height = env.unwrapped.ale.getScreenDims()
-    env.unwrapped._get_obs = lambda : env.unwrapped.ale.getScreenGrayscale().reshape((screen_height, screen_width))
+    env.unwrapped._get_obs = lambda: (
+        env.unwrapped.ale.getScreenGrayscale()
+    )
     env.unwrapped.frameskip = frameskip
 
     env = FullCloneRestore(env)
-
-    if add_downsampling:
-        env = Downsampling(env, downsampling_tiles_w=downsampling_tiles_w, downsampling_tiles_h=downsampling_tiles_h,
-                           downsampling_pixel_values=downsampling_pix_values)
     env = ResizeImage(env, new_size=(84, 84))
     env = FrameBuffer(env, buffer_size=4)
     if max_steps is not None:

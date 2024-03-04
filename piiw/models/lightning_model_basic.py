@@ -31,9 +31,7 @@ class LightningDQN(pl.LightningModule):
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
 
-        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length, add_downsampling=False,
-                               downsampling_tiles_w=None, downsampling_tiles_h=None,
-                               downsampling_pix_values=None,
+        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length,
                                atari_frameskip=config.train.atari_frameskip)
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,

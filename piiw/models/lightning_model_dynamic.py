@@ -31,10 +31,8 @@ class LightningDQNDynamic(pl.LightningModule):
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
 
-        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length, add_downsampling=False,
-                               downsampling_tiles_w=None, downsampling_tiles_h=None,
-                               downsampling_pix_values=None,
-                               atari_frameskip=config.train.atari_frameskip)
+        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length,
+                                            atari_frameskip=config.train.atari_frameskip)
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
@@ -115,7 +113,8 @@ class LightningDQNDynamic(pl.LightningModule):
             tree=self.tree,
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
-            n_action_space=self.env.action_space.n
+            n_action_space=self.env.action_space.n,
+            softmax_temp=self.config.plan.softmax_temperature
         )
 
         # tensors were created for tensorflow, which has channel-last input shape
@@ -126,9 +125,9 @@ class LightningDQNDynamic(pl.LightningModule):
 
         if episode_done:
             self.episodes += 1
-            #print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
+            # print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
             self.log_dict({'episode': float(self.episodes),
-                            'episode_steps': float(self.episode_step),
+                           'episode_steps': float(self.episode_step),
                            'episode_reward': r})
             self.tree = self.actor.reset()
             self.episode_step = 0
@@ -160,9 +159,10 @@ class LightningDQNDynamic(pl.LightningModule):
                 tree=self.tree,
                 cache_subtree=self.config.plan.cache_subtree,
                 discount_factor=self.config.plan.discount_factor,
-                n_action_space=self.env.action_space.n
+                n_action_space=self.env.action_space.n,
+                softmax_temp=self.config.plan.softmax_temperature
             )
-            self.actor.render(size=(800, 800), tree=self.tree)
+            # self.actor.render(size=(800, 800), tree=self.tree)
             pbar.update(len(self.experience_replay) - cur_length)
             if episode_done:
                 self.tree = self.actor.reset()
@@ -181,12 +181,14 @@ class LightningDQNDynamic(pl.LightningModule):
 
     def get_compute_dynamic_policy_output_fn(self, model, preproc_obs_fn):
         def dynamic_policy_output(node):
-            x = torch.tensor(np.expand_dims(preproc_obs_fn(node.data["obs"]), axis=0), dtype=torch.float32, device=self.device)
+            x = torch.tensor(np.expand_dims(preproc_obs_fn(node.data["obs"]), axis=0), dtype=torch.float32,
+                             device=self.device)
 
             with torch.no_grad():
                 logits, features = model(x)
             node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
-            node.data["features"] = list(enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
+            node.data["features"] = list(
+                enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
 
         return dynamic_policy_output
 
@@ -198,7 +200,8 @@ def planning_step(actor,
                   tree,
                   cache_subtree,
                   discount_factor,
-                  n_action_space
+                  n_action_space,
+                  softmax_temp
                   ):
     interactions.reset_budget()
     planner.initialize(tree=tree)
@@ -210,13 +213,13 @@ def planning_step(actor,
                                 n_actions=n_action_space,
                                 discount_factor=discount_factor)
 
-    policy_output = softmax(step_Q, temp=0)
+    policy_output = softmax(step_Q, temp=softmax_temp)
     step_action = sample_pmf(policy_output)
 
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
     tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
-    #tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
+    # tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
     #
 
     dataset.append({"observations": tensor_pytorch_format,

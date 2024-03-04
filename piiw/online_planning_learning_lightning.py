@@ -32,8 +32,10 @@ def main(config):
     pl.seed_everything(config.train.seed)
 
     logger = WandbLogger(
-        log_model=True, project="pi-iw-experiments-piiw",
-        id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}'
+        project="pi-iw-experiments-piiw",
+        id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
+        #offline=True,
+        #log_model=False # needs to be False when offline is enabled
     )
 
 
