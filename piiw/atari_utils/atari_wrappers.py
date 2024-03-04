@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from collections import deque
 
-from piiw.utils.utils import display_image_cv2
+from utils.utils import display_image_cv2
 
 
 # Gym wrapper with clone/restore state

@@ -2,15 +2,15 @@ import hydra
 import numpy as np
 import torch.optim
 
-from piiw.data.experience_replay import ExperienceReplay
+from data.experience_replay import ExperienceReplay
 from utils.utils import sample_pmf, reward_in_tree
 from utils.utils import softmax
-from piiw.utils.interactions_counter import InteractionsCounter
-from piiw.planners.rollout_IW import RolloutIW
+from utils.interactions_counter import InteractionsCounter
+from planners.rollout_IW import RolloutIW
 import timeit
 import gym
-from piiw.tree_utils.tree_actor import EnvTreeActor
-from piiw.models.mnih_2013 import Mnih2013
+from tree_utils.tree_actor import EnvTreeActor
+from models.mnih_2013 import Mnih2013
 import gridenvs.examples  # register GE environments to gym
 
 

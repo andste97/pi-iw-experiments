@@ -1,6 +1,6 @@
 import numpy as np
 
-from piiw.utils.utils import cstr
+from utils.utils import cstr
 
 
 class Node:

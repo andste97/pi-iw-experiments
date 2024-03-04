@@ -5,8 +5,8 @@ import wandb
 from omegaconf import OmegaConf
 from pytorch_lightning.loggers import WandbLogger
 
-from piiw.models.lightning_model_basic import LightningDQN
-from piiw.models.lightning_model_dynamic import LightningDQNDynamic
+from models.lightning_model_basic import LightningDQN
+from models.lightning_model_dynamic import LightningDQNDynamic
 import timeit
 from datetime import datetime
 import gym

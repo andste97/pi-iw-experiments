@@ -8,18 +8,18 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from tqdm import tqdm
 
-from piiw.atari_utils.make_env import make_env
-from piiw.models.mnih_2013 import Mnih2013
+from atari_utils.make_env import make_env
+from models.mnih_2013 import Mnih2013
 import gym
 import numpy as np
 import wandb
 
-from piiw.data.ExperienceDataset import ExperienceDataset
-from piiw.data.experience_replay import ExperienceReplay
-from piiw.planners.rollout_IW import RolloutIW
-from piiw.tree_utils.tree_actor import EnvTreeActor
-from piiw.utils.interactions_counter import InteractionsCounter
-from piiw.utils.utils import softmax, sample_pmf, reward_in_tree
+from data.ExperienceDataset import ExperienceDataset
+from data.experience_replay import ExperienceReplay
+from planners.rollout_IW import RolloutIW
+from tree_utils.tree_actor import EnvTreeActor
+from utils.interactions_counter import InteractionsCounter
+from utils.utils import softmax, sample_pmf, reward_in_tree
 
 
 class LightningDQN(pl.LightningModule):

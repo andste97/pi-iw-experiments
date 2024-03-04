@@ -1,4 +1,4 @@
-from piiw.planners.rollout_width_planner import RolloutWidthPlanner
+from planners.rollout_width_planner import RolloutWidthPlanner
 
 
 class RolloutLabelsWidthPlanner(RolloutWidthPlanner):

@@ -1,5 +1,5 @@
 from torch.utils.data import IterableDataset, Dataset
-from piiw.data.experience_replay import ExperienceReplay
+from data.experience_replay import ExperienceReplay
 
 
 # Original Source for this: https://towardsdatascience.com/en-lightning-reinforcement-learning-a155c217c3de

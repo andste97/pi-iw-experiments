@@ -1,4 +1,4 @@
-from piiw.utils.utils import random_index
+from utils.utils import random_index
 import torch
 import numpy as np
 

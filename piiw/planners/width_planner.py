@@ -1,4 +1,4 @@
-from piiw.planners.planner import Planner
+from planners.planner import Planner
 
 class WidthPlanner(Planner):
     def __init__(self, generate_successor_fn, width, ignore_cached_nodes, ignore_terminal_nodes, features_name):

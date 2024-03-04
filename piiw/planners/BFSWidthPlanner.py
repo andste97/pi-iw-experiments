@@ -1,7 +1,7 @@
-from piiw.planners.width_planner import WidthPlanner
-from piiw.novelty_tables.binary_novelty_table import BinaryNoveltyTable
-from piiw.novelty_tables.novelty_n_table import NoveltyNTable
-from piiw.novelty_tables.novelty_1_table import Novelty1Table
+from planners.width_planner import WidthPlanner
+from novelty_tables.binary_novelty_table import BinaryNoveltyTable
+from novelty_tables.novelty_n_table import NoveltyNTable
+from novelty_tables.novelty_1_table import Novelty1Table
 
 
 class BFSWidthPlanner(WidthPlanner):
