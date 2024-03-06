@@ -13,17 +13,17 @@ For atari games, use the deterministic version of the gym environments, which ca
 ## Docker containers
 
 ### Commands to build docker containers
-1. Training container: `docker build -f dockerfiles/train_model.dockerfile . -t piiw_trainer:latest`
+1. Training container: `docker build -f dockerfiles/train_model.dockerfile . -t andi97/piiw_trainer:latest`
 
 ### Commands to run docker containers
 The docker containers are set up without an entrypoint. 
 
 #### Running the training container:
-`docker run -v ./data:/data -v ./models:/models -e WANDB_API_KEY='<your-api-key>' piiw_trainer:latest python3 ./piiw/online_planning_learning_lightning.py`
+`docker run -v ./data:/data -v ./models:/models -e WANDB_API_KEY='<your-api-key>' andi97/piiw_trainer:latest python3 ./piiw/online_planning_learning_lightning.py`
 
 IMPORTANT: to add GPU support to a container, add the flag `--gpus all` to above command, like so:
 
-`docker run -v ./data:/data -v ./models:/models -e WANDB_API_KEY='<your-api-key>' --gpus all piiw_trainer:latest python3 ./piiw/online_planning_learning_lightning.py`
+`docker run -v ./data:/data -v ./models:/models -e WANDB_API_KEY='<your-api-key>' --gpus all andi97/piiw_trainer:latest python3 ./piiw/online_planning_learning_lightning.py`
 
 ## Project structure
 
