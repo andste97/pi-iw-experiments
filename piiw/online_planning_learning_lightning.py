@@ -1,8 +1,5 @@
 import hydra
-import numpy as np
-import torch.optim
 import wandb
-from omegaconf import OmegaConf
 from pytorch_lightning.loggers import WandbLogger
 
 from models.lightning_model_basic import LightningDQN
@@ -17,25 +14,18 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config_atari_dynamic.yaml",
+    config_name="config_dynamic.yaml",
     version_base="1.3",
 )
 def main(config):
-    frametime = 1  # in milliseconds to display renderings
-
-    nodes_generated = []
-    times = []
-    rewards = []
-    start_time = timeit.default_timer()
-
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
 
     logger = WandbLogger(
         project="pi-iw-experiments-piiw",
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
-        #offline=True,
-        #log_model=False # needs to be False when offline is enabled
+        offline=True,
+        log_model=False # needs to be False when offline is enabled
     )
 
 

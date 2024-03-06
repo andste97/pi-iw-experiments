@@ -1,8 +1,6 @@
 from collections import OrderedDict
 
-import torch.nn.functional as F
 from omegaconf import OmegaConf
-from torch import nn, flatten, optim
 import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -12,7 +10,6 @@ from atari_utils.make_env import make_env
 from models.mnih_2013 import Mnih2013
 import gym
 import numpy as np
-import wandb
 
 from data.ExperienceDataset import ExperienceDataset
 from data.experience_replay import ExperienceReplay
@@ -20,6 +17,7 @@ from planners.rollout_IW import RolloutIW
 from tree_utils.tree_actor import EnvTreeActor
 from utils.interactions_counter import InteractionsCounter
 from utils.utils import softmax, sample_pmf, reward_in_tree
+from atari_utils.atari_wrappers import is_atari_env
 
 
 class LightningDQNDynamic(pl.LightningModule):
@@ -219,8 +217,10 @@ def planning_step(actor,
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
     tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
-    # tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
-    #
+
+    if not is_atari_env(actor.env):  # if not atari env, then it is a gridworld env, which supplies thensors
+        # in the shape: [x, y, channels] and needs to be changed for pytroch
+        tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
 
     dataset.append({"observations": tensor_pytorch_format,
                     "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
