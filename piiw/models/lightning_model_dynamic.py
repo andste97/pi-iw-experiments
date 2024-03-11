@@ -8,8 +8,8 @@ from tqdm import tqdm
 
 from atari_utils.make_env import make_env
 from models.mnih_2013 import Mnih2013
-import gym
 import numpy as np
+import wandb
 
 from data.ExperienceDataset import ExperienceDataset
 from data.experience_replay import ExperienceReplay
@@ -29,7 +29,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
 
-        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length,
+        self.env = make_env(config.train.env_id, config.train.episode_length,
                                             atari_frameskip=config.train.atari_frameskip)
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
@@ -67,7 +67,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.actor = EnvTreeActor(
             self.env,
             observe_fns=[
-                self.get_compute_dynamic_policy_output_fn(model, preproc_obs_fn),
+                self.get_compute_dynamic_policy_output_fn(model),
                 increase_interactions_fn,
                 increase_total_interactions_fn
             ],
@@ -177,9 +177,9 @@ class LightningDQNDynamic(pl.LightningModule):
         )
         return dataloader
 
-    def get_compute_dynamic_policy_output_fn(self, model, preproc_obs_fn):
+    def get_compute_dynamic_policy_output_fn(self, model):
         def dynamic_policy_output(node):
-            x = torch.tensor(np.expand_dims(preproc_obs_fn(node.data["obs"]), axis=0), dtype=torch.float32,
+            x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32,
                              device=self.device)
 
             with torch.no_grad():
@@ -189,6 +189,40 @@ class LightningDQNDynamic(pl.LightningModule):
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
 
         return dynamic_policy_output
+
+    def test_model(self):
+        tree = self.actor.reset()
+
+        #test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
+        test_results = ExperienceReplay(
+            capacity=self.config.train.replay_capacity,
+            keys=self.config.train.experience_keys
+        )
+
+        images = []
+
+        for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
+            r, episode_done = planning_step(
+                actor=self.actor,
+                planner=self.planner,
+                interactions=self.interactions,
+                dataset=test_results,
+                tree=tree,
+                cache_subtree=self.config.plan.cache_subtree,
+                discount_factor=self.config.plan.discount_factor,
+                n_action_space=self.env.action_space.n,
+                softmax_temp=self.config.plan.softmax_temperature
+            )
+            images.append(self.actor.render(tree))
+
+            if episode_done:
+                wandb.log({'test/episode_steps': i})
+                break
+
+
+        wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
+        return OrderedDict({'testing_rewards': r})
+
 
 
 def planning_step(actor,
@@ -217,10 +251,6 @@ def planning_step(actor,
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
     tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
-
-    if not is_atari_env(actor.env):  # if not atari env, then it is a gridworld env, which supplies thensors
-        # in the shape: [x, y, channels] and needs to be changed for pytroch
-        tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
 
     dataset.append({"observations": tensor_pytorch_format,
                     "target_policy": torch.tensor(policy_output, dtype=torch.float32)})

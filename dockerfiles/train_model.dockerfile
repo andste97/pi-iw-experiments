@@ -15,7 +15,7 @@ COPY piiw/ piiw/
 
 RUN pip install -r requirements.txt --no-cache-dir
 
-RUN git clone https://github.com/aig-upf/gridenvs.git && \
+RUN git clone https://github.com/andste97/gridenvs.git && \
     cd gridenvs && \
     pip install -e . --no-cache-dir
 

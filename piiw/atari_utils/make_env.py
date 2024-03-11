@@ -22,8 +22,5 @@ def make_env(env_id, max_episode_steps, atari_frameskip):
     if is_atari_env(env):
         env = wrap_atari_env(env, frameskip=atari_frameskip, max_steps=max_episode_steps)
         logger.info("Atari environment modified: observation is now a 4-channel image of the last four non-skipped frames in grayscale. Frameskip set to %i." % atari_frameskip)
-        preproc_obs_fn = lambda obs_batch: obs_batch # np.moveaxis(obs_batch, 1, -1)  # move channels to the last dimension
-    else:
-        preproc_obs_fn = lambda x: np.moveaxis(x, -1, 0)
 
-    return env, preproc_obs_fn
+    return env

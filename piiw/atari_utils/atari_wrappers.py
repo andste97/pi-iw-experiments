@@ -134,7 +134,7 @@ class FullCloneRestore(Wrapper):
         return self.env.clone_state(include_rng=True)
 
     def restore_state(self, state):
-        self.env.restore_full_state(state)
+        self.env.restore_state(state)
 
 
 def is_atari_env(env):

@@ -37,4 +37,4 @@ train:
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   atari_frameskip: 15
-  max_epochs: 10000 # number of epochs the trainer will train the model for
+  max_epochs: 8000 # number of epochs the trainer will train the model for
