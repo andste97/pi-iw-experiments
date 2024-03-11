@@ -25,6 +25,15 @@ IMPORTANT: to add GPU support to a container, add the flag `--gpus all` to above
 
 `docker run -v ./data:/data -v ./models:/models -e WANDB_API_KEY='<your-api-key>' --gpus all andi97/piiw_trainer:latest python3 ./piiw/online_planning_learning_lightning.py`
 
+Other params:
+
+We use hydra for our config. See their documentation for how to overwrite/add config values.
+See: https://hydra.cc/docs/advanced/override_grammar/basic/
+
+To overwrite the config to be used, use the key `--config-name <config_name.yaml>`
+
+
+
 ## Project structure
 
 The directory structure of the project looks like this:

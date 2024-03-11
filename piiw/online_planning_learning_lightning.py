@@ -26,6 +26,7 @@ def main(config):
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
         #offline=True,
         #log_model=False # needs to be False when offline is enabled
+        log_model='all'
     )
 
 
@@ -34,12 +35,18 @@ def main(config):
         model = LightningDQNDynamic(config)
     else:
         model = LightningDQN(config)
-    logger.watch(model)
+
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(
+        monitor="train/loss",
+        every_n_epochs=10,
+        save_on_train_epoch_end=True
+    )
 
     trainer = pl.Trainer(
         accelerator="auto",
         max_epochs=config.train.max_epochs,
         logger=logger,
+        callbacks=[checkpoint_callback],
         deterministic="warn",
         enable_checkpointing=True
     )
