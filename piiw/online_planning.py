@@ -1,8 +1,8 @@
 import numpy as np
 from utils.utils import sample_pmf, reward_in_tree
 from utils.utils import softmax
-from piiw.utils.interactions_counter import InteractionsCounter
-from piiw.planners.rollout_IW import RolloutIW
+from utils.interactions_counter import InteractionsCounter
+from planners.rollout_IW import RolloutIW
 import timeit
 
 def get_gridenvs_BASIC_features_fn(env, features_name="features"):
@@ -22,7 +22,7 @@ def sample_best_action(node, n_actions, discount_factor):
 
 if __name__ == "__main__":
     import gym
-    from piiw.tree_utils.tree_actor import EnvTreeActor
+    from tree_utils.tree_actor import EnvTreeActor
     import gridenvs.examples  # register GE environments to gym
 
     # import gridenvs.examples  # gym registration always gets lost during refactoring

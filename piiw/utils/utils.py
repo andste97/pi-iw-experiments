@@ -154,7 +154,7 @@ def load_hdf5(filename):
     return res
 
 
-def display_image_cv2(window_name, image, block_ms=1):
+def display_image_cv2(window_name, image, block_ms=1, size=None):
     """
     Displays the given image with OpenCV2 in a window with the given name. It may also block until the window is close
     if block_ms is None, or for the given milliseconds. If 0 is given, it will actually block for 1ms, which is the
@@ -165,56 +165,10 @@ def display_image_cv2(window_name, image, block_ms=1):
     elif block_ms is None: block_ms = 0 # 0 means until we close the window (None for us)
     assert block_ms >= 0
     if issubclass(image.dtype.type, np.integer): image = image.astype(np.float32)/255
+    if size is not None:
+        image = cv2.resize(image, size, interpolation=cv2.INTER_AREA)
     cv2.imshow(window_name, cv2.cvtColor(image.astype(np.float32), cv2.COLOR_RGB2BGR)) # cv2 works with BGR (and also displays it like that)
     cv2.waitKey(block_ms) # shows image and waits for this amout of ms (or until we close the window if 0 is passed)
-
-
-class ParamsDef:
-    class NoneDef:
-        def __init__(self, type):
-            self.type = type
-        def __str__(self):
-            return f"NoneDef({str(self.type)})"
-        def __repr__(self):
-            return self.__str__()
-
-    def to_dict(self):
-        return {k: getattr(self, k) for k in dir(self) if not k.startswith('__') and not callable(getattr(self, k))}
-
-    def parse_args(self):
-        parser = argparse.ArgumentParser()
-        params_dict = self.to_dict()
-
-        for k, v in params_dict.items():
-            constructor_from_str, value = self._process_default(v)
-            parser.add_argument("--" + k.replace('_', '-'), type=constructor_from_str, default=value)
-        args = parser.parse_args()
-        for k in params_dict.keys():
-            setattr(self, k, getattr(args, k))
-        return self
-
-    def __str__(self):
-        return "\n    ".join(["Parameters:"] + [f"{k} = {repr(v)}" for k, v in self.to_dict().items()])
-
-    def __repr__(self):
-        return self.__str__()
-
-    def _process_default(self, v):
-        # assert not isinstance(v, (list, tuple)), "Default can't be list or tuple."
-        assert v is not None, "Use NoneDef class."
-        t = type(v)
-        if t is ParamsDef.NoneDef:
-            t = v.type
-            v = None
-        if t is bool:
-            t = strtobool
-
-        def constructor(x):
-            if x is None or x == "None" or x == "none":
-                return None
-            return t(x)
-
-        return constructor, v
 
 
 class AnsiSpecial:

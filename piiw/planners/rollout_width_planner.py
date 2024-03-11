@@ -1,8 +1,8 @@
-from piiw.planners.width_planner import WidthPlanner
-from piiw.novelty_tables.binary_novelty_table import BinaryNoveltyTable
-from piiw.novelty_tables.depth_novelty_n_table import DepthNoveltyNTable
-from piiw.novelty_tables.depth_features_novelty_1_table import DepthFeaturesNovelty1Table
-from piiw.novelty_tables.depth_atoms_novelty_1_table import DepthAtomsNovelty1Table
+from planners.width_planner import WidthPlanner
+from novelty_tables.binary_novelty_table import BinaryNoveltyTable
+from novelty_tables.depth_novelty_n_table import DepthNoveltyNTable
+from novelty_tables.depth_features_novelty_1_table import DepthFeaturesNovelty1Table
+from novelty_tables.depth_atoms_novelty_1_table import DepthAtomsNovelty1Table
 
 
 class RolloutWidthPlanner(WidthPlanner):

@@ -1,6 +1,6 @@
 import operator
 
-from piiw.tree_utils.node import Node
+from tree_utils.node import Node
 
 class Tree:
     """

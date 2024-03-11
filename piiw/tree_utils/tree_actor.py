@@ -1,6 +1,6 @@
 import numpy as np
-from piiw.tree_utils.tree import Tree
-from piiw.utils.utils import env_has_wrapper, display_image_cv2
+from tree_utils.tree import Tree
+from utils.utils import env_has_wrapper, display_image_cv2
 import cv2
 
 
@@ -97,13 +97,18 @@ class EnvTreeActor:
 
         return next_node
 
-    def render(self, tree, size=None, window_name="Render"):
+    def render(self, tree, size=(800,800), window_name="Render", frametime=1000):
         obs = tree.root.data["obs"]
         img = obs[-1] if type(obs) is list else obs
 
+        # refactor img to put channels last for cv2
+        img = np.moveaxis(img, 0, -1)
         if size: img = cv2.resize(img, size, interpolation=cv2.INTER_AREA)
         if len(img.shape) == 2: img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-        display_image_cv2(window_name, img)
+
+        # refactor image again for other used libraries
+        img = np.moveaxis(img, -1, 0)
+        return img
 
     def render_downsampled(self, tree, max_pix_value, size=None, window_name="Render downsampled"):
         if "downsampled_image" in tree.root.data:
@@ -112,7 +117,9 @@ class EnvTreeActor:
             if len(img.shape) == 2: img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
             display_image_cv2(window_name, img/float(max_pix_value))
 
-    def render_tree(self, tree, size=None, window_name="Render tree", frametime=10):
+    def render_tree(self, tree, size=(800,800), window_name="Render tree", frametime=10):
+        """Renders and displays the entire planning tree as a succession of images in windoes.
+        Should only be used with the gridenvs environment."""
         get_img = lambda obs: obs[-1] if type(obs) is list else obs
         root_img = get_img(tree.root.data["obs"])
         image = root_img / 255.0

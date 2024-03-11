@@ -1,36 +1,37 @@
 from collections import OrderedDict
 
-import torch.nn.functional as F
-from torch import nn, flatten, optim
+from omegaconf import OmegaConf
 import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+from tqdm import tqdm
 
-from piiw.models.mnih_2013 import Mnih2013
-import gym
+from atari_utils.make_env import make_env
+from models.mnih_2013 import Mnih2013
 import numpy as np
+import wandb
 
-from piiw.data.ExperienceDataset import ExperienceDataset
-from piiw.data.experience_replay import ExperienceReplay
-from piiw.planners.rollout_IW import RolloutIW
-from piiw.tree_utils.tree_actor import EnvTreeActor
-from piiw.utils.interactions_counter import InteractionsCounter
-from piiw.utils.utils import softmax, sample_pmf, reward_in_tree
+from data.ExperienceDataset import ExperienceDataset
+from data.experience_replay import ExperienceReplay
+from planners.rollout_IW import RolloutIW
+from tree_utils.tree_actor import EnvTreeActor
+from utils.interactions_counter import InteractionsCounter
+from utils.utils import softmax, sample_pmf, reward_in_tree
+from atari_utils.atari_wrappers import is_atari_env
 
 
-class LightningDQN(pl.LightningModule):
+class LightningDQNDynamic(pl.LightningModule):
     """The model used by MNIH 2013 paper of DQN."""
 
     def __init__(self,
                  config):
-
         super().__init__()
-        self.automatic_optimization = False
         self.config = config
+        self.save_hyperparameters(OmegaConf.to_container(config))
 
-        self.env = gym.make(config.train.env_id)
-
-        self.model = Mnih2013(
+        self.env = make_env(config.train.env_id, config.train.episode_length,
+                                            atari_frameskip=config.train.atari_frameskip)
+        model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
             conv1_kernel_size=config.model.conv1_kernel_size,
@@ -41,8 +42,11 @@ class LightningDQN(pl.LightningModule):
             fc1_in_features=config.model.fc1_in_features,
             fc1_out_features=config.model.fc1_out_features,
             num_logits=self.env.action_space.n,
-            add_value=config.model.add_value
+            add_value=config.model.add_value,
+            use_dynamic_features=config.model.use_dynamic_features
         )
+
+        self.model = model.to(self.device)
 
         self.experience_replay = ExperienceReplay(
             capacity=config.train.replay_capacity,
@@ -63,13 +67,12 @@ class LightningDQN(pl.LightningModule):
         self.actor = EnvTreeActor(
             self.env,
             observe_fns=[
-                get_gridenvs_BASIC_features_fn(self.env),
-                get_compute_policy_output_fn(self.model),
+                self.get_compute_dynamic_policy_output_fn(model),
                 increase_interactions_fn,
                 increase_total_interactions_fn
             ],
             applicable_actions_fn=self.applicable_actions_fn
-       )
+        )
 
         self.planner = RolloutIW(
             policy_fn=network_policy,
@@ -83,7 +86,7 @@ class LightningDQN(pl.LightningModule):
         self.tree = self.actor.reset()
         self.episode_step = 0
         self.episodes = 0
-        self.initialize_experience_replay()
+        self.initialize_experience_replay(self.config.train.batch_size)
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
@@ -96,10 +99,8 @@ class LightningDQN(pl.LightningModule):
             # use this for l2 regularization to replace TF regularization implementation
         )
         return [optimizer]
-    def training_step(self, batch, batch_idx):
-        opt = self.optimizers()
-        opt.zero_grad()
 
+    def training_step(self, batch, batch_idx):
         observations, target_policy = batch
 
         r, episode_done = planning_step(
@@ -110,34 +111,44 @@ class LightningDQN(pl.LightningModule):
             tree=self.tree,
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
-            n_action_space=self.env.action_space.n
+            n_action_space=self.env.action_space.n,
+            softmax_temp=self.config.plan.softmax_temperature
         )
 
         # tensors were created for tensorflow, which has channel-last input shape
         # but pytorch has channel-first input shape.
 
-        logits = self.model(observations)[0]
+        logits, features = self.model(observations)
         loss = self.criterion(logits, target_policy)
-
-        loss.backward()
-        opt.step()
 
         if episode_done:
             self.episodes += 1
-            print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
+            # print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
+            self.log_dict({'episode': float(self.episodes),
+                           'episode_steps': float(self.episode_step),
+                           'episode_reward': r})
             self.tree = self.actor.reset()
             self.episode_step = 0
 
+        # Log loss and metric
+        self.log_dict({"train/loss": loss,
+                       'total_interactions': float(self.total_interactions.value)})
+
         self.episode_step += 1
-        return OrderedDict({'loss': loss, 'episode_steps:': self.episode_step})
+        return OrderedDict({'loss': loss})
 
     def applicable_actions_fn(self):
         env_actions = list(range(self.env.action_space.n))
         return env_actions
 
-    def initialize_experience_replay(self):
-        print("Initializing experience replay", flush=True)
-        while len(self.experience_replay) < self.config.train.batch_size:
+    def initialize_experience_replay(self, warmup_length):
+        pbar = tqdm(total=warmup_length, desc="Initializing experience replay")
+
+        # make sure we cannot get stuck in infinite loop
+        assert self.config.train.replay_capacity >= warmup_length
+
+        while len(self.experience_replay) < warmup_length:
+            cur_length = len(self.experience_replay)
             r, episode_done = planning_step(
                 actor=self.actor,
                 planner=self.planner,
@@ -146,8 +157,11 @@ class LightningDQN(pl.LightningModule):
                 tree=self.tree,
                 cache_subtree=self.config.plan.cache_subtree,
                 discount_factor=self.config.plan.discount_factor,
-                n_action_space=self.env.action_space.n
+                n_action_space=self.env.action_space.n,
+                softmax_temp=self.config.plan.softmax_temperature
             )
+            # self.actor.render(size=(800, 800), tree=self.tree)
+            pbar.update(len(self.experience_replay) - cur_length)
             if episode_done:
                 self.tree = self.actor.reset()
 
@@ -155,12 +169,60 @@ class LightningDQN(pl.LightningModule):
 
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
-        dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size)
+        dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size,
+                                    self.config.train.episode_length)
         dataloader = DataLoader(
             dataset=dataset,
             batch_size=self.config.train.batch_size,
         )
         return dataloader
+
+    def get_compute_dynamic_policy_output_fn(self, model):
+        def dynamic_policy_output(node):
+            x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32,
+                             device=self.device)
+
+            with torch.no_grad():
+                logits, features = model(x)
+            node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
+            node.data["features"] = list(
+                enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
+
+        return dynamic_policy_output
+
+    def test_model(self):
+        tree = self.actor.reset()
+
+        #test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
+        test_results = ExperienceReplay(
+            capacity=self.config.train.replay_capacity,
+            keys=self.config.train.experience_keys
+        )
+
+        images = []
+
+        for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
+            r, episode_done = planning_step(
+                actor=self.actor,
+                planner=self.planner,
+                interactions=self.interactions,
+                dataset=test_results,
+                tree=tree,
+                cache_subtree=self.config.plan.cache_subtree,
+                discount_factor=self.config.plan.discount_factor,
+                n_action_space=self.env.action_space.n,
+                softmax_temp=self.config.plan.softmax_temperature
+            )
+            images.append(self.actor.render(tree))
+
+            if episode_done:
+                wandb.log({'test/episode_steps': i})
+                break
+
+
+        wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
+        return OrderedDict({'testing_rewards': r})
+
 
 
 def planning_step(actor,
@@ -170,7 +232,8 @@ def planning_step(actor,
                   tree,
                   cache_subtree,
                   discount_factor,
-                  n_action_space
+                  n_action_space,
+                  softmax_temp
                   ):
     interactions.reset_budget()
     planner.initialize(tree=tree)
@@ -182,41 +245,16 @@ def planning_step(actor,
                                 n_actions=n_action_space,
                                 discount_factor=discount_factor)
 
-    policy_output = softmax(step_Q, temp=0)
+    policy_output = softmax(step_Q, temp=softmax_temp)
     step_action = sample_pmf(policy_output)
 
-    #print("action: ", step_action)
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
-    tensor_pytorch_format = torch.tensor(prev_root_data["obs"], dtype=torch.float32)
-    tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
+    tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
 
     dataset.append({"observations": tensor_pytorch_format,
                     "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
     return current_root.data["r"], current_root.data["done"]
-
-
-def get_gridenvs_BASIC_features_fn(env):
-    def gridenvs_BASIC_features(node):
-        node.data["features"] = tuple(
-            enumerate(env.unwrapped.get_char_matrix().flatten()))  # compute BASIC features
-
-    return gridenvs_BASIC_features
-
-
-def get_compute_policy_output_fn(model):
-    def policy_output(node):
-        # it's much faster to compute the policy output when expanding the state
-        # than every time the planner tries to accesss the state (which is what the
-        # happens when you put the model answer into the network_policy fn)
-        x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32)
-        x = x.permute(0, 3, 1, 2).contiguous()
-
-        with torch.no_grad():
-            logits = model(x)
-        node.data["probs"] = np.array(torch.nn.functional.softmax(logits[0], dim=1).data).ravel()
-
-    return policy_output
 
 
 def network_policy(node):

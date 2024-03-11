@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import numpy as np
 
-from piiw.utils.utils import logger, save_hdf5
+from utils.utils import logger, save_hdf5
 
 
 class Stats:

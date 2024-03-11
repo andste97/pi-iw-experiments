@@ -2,15 +2,15 @@ import hydra
 import numpy as np
 import torch.optim
 
-from piiw.data.experience_replay import ExperienceReplay
+from data.experience_replay import ExperienceReplay
 from utils.utils import sample_pmf, reward_in_tree
 from utils.utils import softmax
-from piiw.utils.interactions_counter import InteractionsCounter
-from piiw.planners.rollout_IW import RolloutIW
+from utils.interactions_counter import InteractionsCounter
+from planners.rollout_IW import RolloutIW
 import timeit
 import gym
-from piiw.tree_utils.tree_actor import EnvTreeActor
-from piiw.models.mnih_2013 import Mnih2013
+from tree_utils.tree_actor import EnvTreeActor
+from models.mnih_2013 import Mnih2013
 import gridenvs.examples  # register GE environments to gym
 
 
@@ -38,7 +38,7 @@ def get_compute_policy_output_fn(model):
 # Function that will be executed at each interaction with the environment
 # def observe_pi_iw_dynamic(model, node):
 #     x = tf.constant(np.expand_dims(node.data["obs"], axis=0).astype(np.float32))
-#     logits, features = model(x, output_features=True)
+#     logits, features = model(x, use_dynamic_features=True)
 #     node.data["probs"] = tf.nn.softmax(logits).numpy().ravel()
 #     node.data["features"] = features_to_atoms(features.numpy().ravel().astype(np.bool)) # discretization -> bool
 
@@ -90,7 +90,7 @@ def planning_step(actor,
 
 @hydra.main(
     config_path="models/config",
-    config_name="config.yaml",
+    config_name="config_basic.yaml",
     version_base="1.3",
 )
 def action(config):
@@ -172,6 +172,8 @@ def action(config):
 
     # filling up the experience dataset
     print("Initializing experience replay", flush=True)
+    assert config.train.replay_capacity >= config.train.batch_size
+    assert config.train.replay_capacity >= config.train.episode_length
     while len(experience_replay) < config.train.batch_size:
         r, episode_done = planning_step(
             actor=actor,

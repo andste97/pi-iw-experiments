@@ -43,8 +43,8 @@ def discover_atoms_tree(tree, features_name):
 
 if __name__ == "__main__":
     import gym
-    from piiw.tree_utils.tree_actor import EnvTreeActor
-    from piiw.planners.rollout_IW import RolloutIW
+    from tree_utils.tree_actor import EnvTreeActor
+    from planners.rollout_IW import RolloutIW
     from utils import InteractionsCounter
     import timeit
     import gridenvs.examples  # register GE environments to gym
