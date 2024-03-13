@@ -43,3 +43,7 @@ class ExperienceReplay:
 
     def sample_one(self):
         return self._data[np.random.choice(len(self._data))]
+
+    def append_all(self, examples: list):
+        for example in examples:
+            self.append(example)

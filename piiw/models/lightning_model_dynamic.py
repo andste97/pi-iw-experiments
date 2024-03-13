@@ -86,6 +86,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.tree = self.actor.reset()
         self.episode_step = 0
         self.episodes = 0
+        self.aux_replay = []
         self.initialize_experience_replay(self.config.train.batch_size)
 
     def configure_optimizers(self):
@@ -107,7 +108,7 @@ class LightningDQNDynamic(pl.LightningModule):
             actor=self.actor,
             planner=self.planner,
             interactions=self.interactions,
-            dataset=self.experience_replay,
+            aux_replay=self.aux_replay,
             tree=self.tree,
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
@@ -122,6 +123,8 @@ class LightningDQNDynamic(pl.LightningModule):
         loss = self.criterion(logits, target_policy)
 
         if episode_done:
+            self.experience_replay.append_all(self.aux_replay)
+            self.reset_aux_replay()
             self.episodes += 1
             # print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
             self.log_dict({'episode': float(self.episodes),
@@ -147,13 +150,13 @@ class LightningDQNDynamic(pl.LightningModule):
         # make sure we cannot get stuck in infinite loop
         assert self.config.train.replay_capacity >= warmup_length
 
-        while len(self.experience_replay) < warmup_length:
-            cur_length = len(self.experience_replay)
+        while len(self.aux_replay) < warmup_length:
+            cur_length = len(self.aux_replay)
             r, episode_done = planning_step(
                 actor=self.actor,
                 planner=self.planner,
                 interactions=self.interactions,
-                dataset=self.experience_replay,
+                aux_replay=self.aux_replay,
                 tree=self.tree,
                 cache_subtree=self.config.plan.cache_subtree,
                 discount_factor=self.config.plan.discount_factor,
@@ -161,11 +164,16 @@ class LightningDQNDynamic(pl.LightningModule):
                 softmax_temp=self.config.plan.softmax_temperature
             )
             # self.actor.render(size=(800, 800), tree=self.tree)
-            pbar.update(len(self.experience_replay) - cur_length)
+            pbar.update(len(self.aux_replay) - cur_length)
             if episode_done:
                 self.tree = self.actor.reset()
 
+        self.experience_replay.append_all(self.aux_replay)
+        self.reset_aux_replay()
         self.tree = self.actor.reset()
+
+    def reset_aux_replay(self):
+        self.aux_replay = []
 
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
@@ -228,7 +236,7 @@ class LightningDQNDynamic(pl.LightningModule):
 def planning_step(actor,
                   planner,
                   interactions,
-                  dataset,
+                  aux_replay,
                   tree,
                   cache_subtree,
                   discount_factor,
@@ -252,7 +260,7 @@ def planning_step(actor,
 
     tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
 
-    dataset.append({"observations": tensor_pytorch_format,
+    aux_replay.append({"observations": tensor_pytorch_format,
                     "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
     return current_root.data["r"], current_root.data["done"]
 

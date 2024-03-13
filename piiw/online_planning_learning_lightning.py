@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config_dynamic_explanatory_test.yaml",
+    config_name="config_dynamic.yaml",
     version_base="1.3",
 )
 def main(config):
@@ -22,7 +22,7 @@ def main(config):
     pl.seed_everything(config.train.seed)
 
     logger = WandbLogger(
-        project="pi-iw-experiments-piiw",
+        project="delayed_experience_replay",
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
         #offline=True,
         #log_model=False # needs to be False when offline is enabled
