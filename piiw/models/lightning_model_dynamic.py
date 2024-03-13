@@ -1,3 +1,4 @@
+import sys
 from collections import OrderedDict
 
 from omegaconf import OmegaConf
@@ -87,6 +88,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.episode_step = 0
         self.episodes = 0
         self.aux_replay = []
+        self.best_episode_reward = -sys.maxsize - 1
         self.initialize_experience_replay(self.config.train.batch_size)
 
     def configure_optimizers(self):
@@ -123,7 +125,10 @@ class LightningDQNDynamic(pl.LightningModule):
         loss = self.criterion(logits, target_policy)
 
         if episode_done:
-            self.experience_replay.append_all(self.aux_replay)
+            # only add new experience if reward is equal or better than last episode
+            if r >= self.best_episode_reward:
+                self.best_episode_reward = r
+                self.experience_replay.append_all(self.aux_replay)
             self.reset_aux_replay()
             self.episodes += 1
             # print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
@@ -200,13 +205,6 @@ class LightningDQNDynamic(pl.LightningModule):
 
     def test_model(self):
         tree = self.actor.reset()
-
-        #test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
-        test_results = ExperienceReplay(
-            capacity=self.config.train.replay_capacity,
-            keys=self.config.train.experience_keys
-        )
-
         images = []
 
         for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
@@ -214,7 +212,7 @@ class LightningDQNDynamic(pl.LightningModule):
                 actor=self.actor,
                 planner=self.planner,
                 interactions=self.interactions,
-                dataset=test_results,
+                aux_replay=[],
                 tree=tree,
                 cache_subtree=self.config.plan.cache_subtree,
                 discount_factor=self.config.plan.discount_factor,
@@ -226,7 +224,6 @@ class LightningDQNDynamic(pl.LightningModule):
             if episode_done:
                 wandb.log({'test/episode_steps': i})
                 break
-
 
         wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
         return OrderedDict({'testing_rewards': r})
