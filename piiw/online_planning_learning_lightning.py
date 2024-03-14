@@ -37,9 +37,9 @@ def main(config):
         model = LightningDQN(config)
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="train/loss",
-        every_n_epochs=10,
-        save_on_train_epoch_end=True
+        monitor="train/episode_reward",
+        save_on_train_epoch_end=True,
+        mode='max'
     )
 
     trainer = pl.Trainer(

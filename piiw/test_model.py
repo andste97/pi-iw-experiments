@@ -39,20 +39,6 @@ def main(config):
     else:
         model = LightningDQN.load_from_checkpoint(checkpoint_path)
 
-    #trainer = pl.Trainer(
-    #    accelerator="auto",
-    #    max_epochs=config.train.max_epochs,
-    #    logger=logger,
-    #    deterministic="warn",
-    #    enable_checkpointing=True
-    #)
-
-    #trainer.fit(
-    #    model
-    #)
-    # save logged data
-    #logger.save()
-
     model.test_model()
 
 

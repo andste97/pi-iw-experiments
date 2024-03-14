@@ -93,6 +93,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.aux_replay = []
         self.best_episode_reward = -sys.maxsize - 1
         self.initialize_experience_replay(self.config.train.batch_size)
+        self.episode_reward = 0
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
@@ -120,26 +121,24 @@ class LightningDQNDynamic(pl.LightningModule):
             n_action_space=self.env.action_space.n,
             softmax_temp=self.config.plan.softmax_temperature
         )
-
-        # tensors were created for tensorflow, which has channel-last input shape
-        # but pytorch has channel-first input shape.
+        self.episode_reward += r
 
         logits, features = self.model(observations)
         loss = self.criterion(logits, target_policy)
 
         if episode_done:
             # only add new experience if reward is equal or better than last episode
-            if r >= self.best_episode_reward:
-                self.best_episode_reward = r
+            if self.episode_reward >= self.best_episode_reward:
+                self.best_episode_reward = self.episode_reward
                 self.experience_replay.append_all(self.aux_replay)
             self.reset_aux_replay()
             self.episodes += 1
-            # print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
-            self.log_dict({'episode': float(self.episodes),
-                           'episode_steps': float(self.episode_step),
-                           'episode_reward': r})
+            self.log_dict({'train/episode': float(self.episodes),
+                           'train/episode_steps': float(self.episode_step),
+                           'train/episode_reward': self.episode_reward})
             self.tree = self.actor.reset()
             self.episode_step = 0
+            self.episode_reward = 0
 
         # Log loss and metric
         self.log_dict({"train/loss": loss,
