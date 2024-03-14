@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config_dynamic_explanatory_test.yaml",
+    config_name="config_dynamic.yaml",
     version_base="1.3",
 )
 def main(config):
@@ -37,9 +37,9 @@ def main(config):
         model = LightningDQN(config)
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="train/loss",
-        every_n_epochs=10,
-        save_on_train_epoch_end=True
+        monitor="train/episode_reward",
+        save_on_train_epoch_end=True,
+        mode='max'
     )
 
     trainer = pl.Trainer(

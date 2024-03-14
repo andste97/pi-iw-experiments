@@ -89,7 +89,8 @@ class LightningDQNDynamic(pl.LightningModule):
         self.tree = self.actor.reset()
         self.episode_step = 0
         self.episodes = 0
-        #self.initialize_experience_replay(self.config.train.batch_size)
+        self.initialize_experience_replay(self.config.train.batch_size)
+        self.episode_reward = 0
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
@@ -117,21 +118,19 @@ class LightningDQNDynamic(pl.LightningModule):
             n_action_space=self.env.action_space.n,
             softmax_temp=self.config.plan.softmax_temperature
         )
-
-        # tensors were created for tensorflow, which has channel-last input shape
-        # but pytorch has channel-first input shape.
+        self.episode_reward += r
 
         logits, features = self.model(observations)
         loss = self.criterion(logits, target_policy)
 
         if episode_done:
             self.episodes += 1
-            # print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
-            self.log_dict({'episode': float(self.episodes),
-                           'episode_steps': float(self.episode_step),
-                           'episode_reward': r})
+            self.log_dict({'train/episode': float(self.episodes),
+                           'train/episode_steps': float(self.episode_step),
+                           'train/episode_reward': self.episode_reward})
             self.tree = self.actor.reset()
             self.episode_step = 0
+            self.episode_reward = 0
 
         # Log loss and metric
         self.log_dict({"train/loss": loss,
