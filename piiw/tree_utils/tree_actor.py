@@ -110,13 +110,6 @@ class EnvTreeActor:
         img = np.moveaxis(img, -1, 0)
         return img
 
-    def render_downsampled(self, tree, max_pix_value, size=None, window_name="Render downsampled"):
-        if "downsampled_image" in tree.root.data:
-            img = tree.root.data["downsampled_image"]
-            if size: img = cv2.resize(img, size, interpolation=cv2.INTER_AREA)
-            if len(img.shape) == 2: img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-            display_image_cv2(window_name, img/float(max_pix_value))
-
     def render_tree(self, tree, size=(800,800), window_name="Render tree", frametime=10):
         """Renders and displays the entire planning tree as a succession of images in windoes.
         Should only be used with the gridenvs environment."""
@@ -138,16 +131,9 @@ class EnvTreeActor:
         # each level deeper gets discounted once by multiplying with discount_factor.
         for node in tree.iter_breadth_first_reverse():
             if node.is_leaf():
-                R = 0
-                if add_value and not node.data["done"]:
-                    R = node.data["v"]
+                R = node.data["r"]
             else:
-                if add_value and use_value_all_nodes:
-                    action_returns = [child.data["r"] + discount_factor * child.data["R"] for child in node.children]
-                    action_returns += [node.data["v"]]
-                    R = np.max(action_returns)
-                else:
-                    R = np.max([child.data["r"] + discount_factor * child.data["R"] for child in node.children])
+                R = np.max([child.data["r"] + discount_factor * child.data["R"] for child in node.children])
             node.data["R"] = R
 
     def get_counts(self, tree, n_actions):
