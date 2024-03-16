@@ -26,7 +26,7 @@ train:
   env_id: "ChopperCommand-v4"
   seed: 0
   batch_size: 32
-  episode_length: 200 # always 200 for gridenvs
+  episode_length: 18000 # They used 18.000 steps according for this according to phd thesis
   learning_rate: 0.0007
   replay_capacity: 10000
   total_interaction_budget: 40000000
