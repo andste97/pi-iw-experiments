@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import hydra
 import wandb
 from pytorch_lightning.loggers import WandbLogger
@@ -11,51 +13,31 @@ import gridenvs.examples  # register GE environments to gym
 
 import pytorch_lightning as pl
 
-
 @hydra.main(
     config_path="models/config",
-    config_name="config_dynamic.yaml",
+    config_name="config_dynamic_explanatory_test.yaml",
     version_base="1.3",
 )
 def main(config):
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
 
-    logger = WandbLogger(
+    run = wandb.init(
         project="pi-iw-experiments-piiw",
-        id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
+        id=f'TEST_{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
         #offline=True,
         #log_model=False # needs to be False when offline is enabled
-        log_model='all'
     )
 
+    artifact = run.use_artifact('piiw-thesis/delayed_experience_replay/model-Riverraid-v4_2024-03-14_12-01-53.719976:v4', type='model')
+    artifact_dir = artifact.download()
+    checkpoint_path = Path(artifact_dir) / "model.ckpt"
 
     # choose wither to uses dynamic or BASIC features
     if config.model.use_dynamic_features:
-        model = LightningDQNDynamic(config)
+        model = LightningDQNDynamic.load_from_checkpoint(checkpoint_path)
     else:
-        model = LightningDQN(config)
-
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="train/episode_reward",
-        save_on_train_epoch_end=True,
-        mode='max'
-    )
-
-    trainer = pl.Trainer(
-        accelerator="auto",
-        max_epochs=config.train.max_epochs,
-        logger=logger,
-        callbacks=[checkpoint_callback],
-        deterministic="warn",
-        enable_checkpointing=True
-    )
-
-    trainer.fit(
-        model
-    )
-    # save logged data
-    logger.save()
+        model = LightningDQN.load_from_checkpoint(checkpoint_path)
 
     model.test_model()
 

@@ -16,7 +16,7 @@ from data.experience_replay import ExperienceReplay
 from planners.rollout_IW import RolloutIW
 from tree_utils.tree_actor import EnvTreeActor
 from utils.interactions_counter import InteractionsCounter
-from utils.utils import softmax, sample_pmf, reward_in_tree
+from utils.utils import softmax, sample_pmf, reward_in_tree, display_image_cv2
 from atari_utils.atari_wrappers import is_atari_env
 
 
@@ -26,11 +26,14 @@ class LightningDQNDynamic(pl.LightningModule):
     def __init__(self,
                  config):
         super().__init__()
+        if(not OmegaConf.is_config(config)):
+            config = OmegaConf.create(config)
+
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
 
         self.env = make_env(config.train.env_id, config.train.episode_length,
-                                            atari_frameskip=config.train.atari_frameskip)
+                            atari_frameskip=config.train.atari_frameskip)
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
@@ -87,6 +90,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.episode_step = 0
         self.episodes = 0
         self.initialize_experience_replay(self.config.train.batch_size)
+        self.episode_reward = 0
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
@@ -114,21 +118,19 @@ class LightningDQNDynamic(pl.LightningModule):
             n_action_space=self.env.action_space.n,
             softmax_temp=self.config.plan.softmax_temperature
         )
-
-        # tensors were created for tensorflow, which has channel-last input shape
-        # but pytorch has channel-first input shape.
+        self.episode_reward += r
 
         logits, features = self.model(observations)
         loss = self.criterion(logits, target_policy)
 
         if episode_done:
             self.episodes += 1
-            # print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
-            self.log_dict({'episode': float(self.episodes),
-                           'episode_steps': float(self.episode_step),
-                           'episode_reward': r})
+            self.log_dict({'train/episode': float(self.episodes),
+                           'train/episode_steps': float(self.episode_step),
+                           'train/episode_reward': self.episode_reward})
             self.tree = self.actor.reset()
             self.episode_step = 0
+            self.episode_reward = 0
 
         # Log loss and metric
         self.log_dict({"train/loss": loss,
@@ -192,6 +194,7 @@ class LightningDQNDynamic(pl.LightningModule):
 
     def test_model(self):
         tree = self.actor.reset()
+        episode_rewards = 0
 
         #test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
         test_results = ExperienceReplay(
@@ -214,14 +217,15 @@ class LightningDQNDynamic(pl.LightningModule):
                 softmax_temp=self.config.plan.softmax_temperature
             )
             images.append(self.actor.render(tree))
+            episode_rewards += r
+            wandb.log({'test/rewards': episode_rewards})
 
             if episode_done:
                 wandb.log({'test/episode_steps': i})
                 break
 
-
         wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
-        return OrderedDict({'testing_rewards': r})
+        return OrderedDict({'testing_rewards': episode_rewards})
 
 
 

@@ -90,44 +90,6 @@ class MaxSteps(Wrapper):
         self._steps = state[0]
         self.env.restore_state(state[1])
 
-def downsample_goexplore(state, downsampling_tiles_w=8, downsampling_tiles_h=11, max_pix_value=7, grayscale=True):
-    """
-    Downsamples an RGB image to a given shape and converts it into grayscale as in Go-Explore
-    https://github.com/uber-research/go-explore/blob/4dc469002769bdcb1115fbc2e0eafb20885dcf55/goexplore_py/montezuma_env.py#L47
-    """
-    shape = (downsampling_tiles_w, downsampling_tiles_h)
-    if grayscale and len(state.shape) == 3:
-        state = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY)
-    state = cv2.resize(state, shape, interpolation=cv2.INTER_AREA)
-    if max_pix_value < 255:
-        state = state/255.0 * max_pix_value
-        state = state.astype(np.uint8)
-    return state
-
-
-class Downsampling(Wrapper):
-    def __init__(self, env, downsampling_tiles_w=8, downsampling_tiles_h=11, downsampling_pixel_values=8):
-        super(Downsampling, self).__init__(env)
-        self.downsampling_tiles_w = downsampling_tiles_w
-        self.downsampling_tiles_h = downsampling_tiles_h
-        self.downsampling_max_pix_value = downsampling_pixel_values - 1
-
-    def reset(self):
-        obs = self.env.reset()
-        self.unwrapped.downsampled_image = downsample_goexplore(obs,
-                                                                downsampling_tiles_w=self.downsampling_tiles_w,
-                                                                downsampling_tiles_h=self.downsampling_tiles_h,
-                                                                max_pix_value=self.downsampling_max_pix_value)
-        return obs
-
-    def step(self, a):
-        obs, r, done, info = self.env.step(a)
-        self.unwrapped.downsampled_image = downsample_goexplore(obs,
-                                                                downsampling_tiles_w=self.downsampling_tiles_w,
-                                                                downsampling_tiles_h=self.downsampling_tiles_h,
-                                                                max_pix_value=self.downsampling_max_pix_value)
-        return obs, r, done, info
-
 
 class FullCloneRestore(Wrapper):
     def clone_state(self):

@@ -1,6 +1,6 @@
 import gym
 from utils.utils import env_has_wrapper, remove_env_wrapper
-from atari_utils.atari_wrappers import is_atari_env, wrap_atari_env, Downsampling
+from atari_utils.atari_wrappers import is_atari_env, wrap_atari_env
 import numpy as np
 import logging as logger
 

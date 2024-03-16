@@ -100,60 +100,6 @@ def remove_env_wrapper(env, wrapper_type):
     return env
 
 
-def save_hdf5(filename, arrays_dict):
-    """
-    Saves a dictionary into an hdf5 file. Values of the dictionary can be either numpy arrays or other dictionaries that
-    follow the same pattern. Numpy arrays will be saved as hdf5 datasets (tables) while dictionaries will define a
-    group (which may contain other datasets and subgroups).
-    :param filename:
-    :param arrays_dict: dict of numpy arrays or dicts
-    :return:
-    """
-    def _save_dict_recursively(file_or_group, d):
-        for name, array_or_dict in d.items():
-            if issubclass(type(array_or_dict), dict):
-                _save_dict_recursively(file_or_group.create_group(name), array_or_dict)
-            else:
-                array = np.asarray(array_or_dict)
-                if np.issubdtype(array.dtype, np.str_):
-                    array = array.astype(np.string_) # Only fixed length strings are supported (np.string_, not np.str)
-                assert array.size > 0, "Cannot save an empty array."
-                dset = file_or_group.create_dataset(name, shape=array.shape, dtype=array.dtype)
-                dset.write_direct(array)
-
-    f = h5py.File(filename, 'w')
-    try:
-        _save_dict_recursively(f, arrays_dict)
-    finally:
-        f.close()
-
-def recursive_hdf5_to_dict(file_or_group):
-    res = dict()
-    for name in file_or_group.keys():
-        if type(file_or_group[name]) is h5py.Group:
-            res[name] = recursive_hdf5_to_dict(file_or_group[name])
-        else:
-            res[name] = np.empty(shape=file_or_group[name].shape, dtype=file_or_group[name].dtype)
-            file_or_group[name].read_direct(res[name])
-            if np.issubdtype(res[name].dtype, np.string_):
-                res[name] = res[name].astype(np.str)
-    return res
-
-def load_hdf5(filename):
-    """
-    Loads an hdf5 file into a dictionary with numpy arrays as values or other dictionaries.
-    :param filename: string containing the path to the hdf5 file
-    :return: dict
-    """
-
-    f = h5py.File(filename, 'r')
-    try:
-        res = recursive_hdf5_to_dict(f)
-    finally:
-        f.close()
-    return res
-
-
 def display_image_cv2(window_name, image, block_ms=1, size=None):
     """
     Displays the given image with OpenCV2 in a window with the given name. It may also block until the window is close
