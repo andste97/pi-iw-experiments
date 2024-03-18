@@ -102,12 +102,12 @@ class EnvTreeActor:
         img = obs[-1] if type(obs) is list else obs
 
         # refactor img to put channels last for cv2
-        img = np.moveaxis(img, 0, -1)
+        if len(img.shape) == 3: img = np.moveaxis(img, 0, -1)
         if size: img = cv2.resize(img, size, interpolation=cv2.INTER_AREA)
         if len(img.shape) == 2: img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
 
         # refactor image again for other used libraries
-        img = np.moveaxis(img, -1, 0)
+        if len(img.shape) == 3: img = np.moveaxis(img, -1, 0)
         return img
 
     def render_tree(self, tree, size=(800,800), window_name="Render tree", frametime=10):
