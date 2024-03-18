@@ -27,7 +27,7 @@ train:
   seed: 0
   batch_size: 32
   episode_length: 18000 # They used 18.000 steps according for this according to phd thesis
-  learning_rate: 0.0007
+  learning_rate: 0.0005
   replay_capacity: 10000
   total_interaction_budget: 40000000
   l2_reg_factor: 0.001
@@ -37,4 +37,4 @@ train:
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   atari_frameskip: 15
-  max_epochs: 8000 # number of epochs the trainer will train the model for
+  max_epochs: 15 # number of epochs the trainer will train the model for
