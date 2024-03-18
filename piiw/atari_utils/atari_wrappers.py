@@ -27,8 +27,6 @@ class ResizeImage(Wrapper):
 
     def step(self, action):
         observation, reward, done, info = self.env.step(action)
-        #img = cv2.resize(observation, self.env.unwrapped.ale.getScreenDims(), interpolation=cv2.INTER_AREA)
-        #display_image_cv2("Rendering", img, block_ms=200)
         return self.resize_fn(observation), reward, done, info
 
 
