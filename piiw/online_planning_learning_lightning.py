@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config_dynamic.yaml",
+    config_name="config_atari_dynamic.yaml",
     version_base="1.3",
 )
 def main(config):
