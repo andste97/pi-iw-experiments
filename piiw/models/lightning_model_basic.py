@@ -28,11 +28,14 @@ class LightningDQN(pl.LightningModule):
     def __init__(self,
                  config):
         super().__init__()
+        if(not OmegaConf.is_config(config)):
+            config = OmegaConf.create(config)
+
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
 
-        self.env, preproc_obs_fn = make_env(config.train.env_id, config.train.episode_length,
-                               atari_frameskip=config.train.atari_frameskip)
+        self.env = make_env(config.train.env_id, config.train.episode_length,
+                            atari_frameskip=config.train.atari_frameskip)
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
@@ -70,7 +73,7 @@ class LightningDQN(pl.LightningModule):
             self.env,
             observe_fns=[
                 get_gridenvs_BASIC_features_fn(self.env),
-                self.get_compute_policy_output_fn(self.model, preproc_obs_fn),
+                self.get_compute_policy_output_fn(self.model),
                 increase_interactions_fn,
                 increase_total_interactions_fn
             ],
@@ -90,6 +93,8 @@ class LightningDQN(pl.LightningModule):
         self.episode_step = 0
         self.episodes = 0
         self.initialize_experience_replay(self.config.train.batch_size)
+        self.episode_reward = 0
+        self.episode_done = False
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
@@ -106,7 +111,7 @@ class LightningDQN(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         observations, target_policy = batch
 
-        r, episode_done = planning_step(
+        r, self.episode_done = planning_step(
             actor=self.actor,
             planner=self.planner,
             interactions=self.interactions,
@@ -114,23 +119,22 @@ class LightningDQN(pl.LightningModule):
             tree=self.tree,
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
-            n_action_space=self.env.action_space.n
+            n_action_space=self.env.action_space.n,
+            softmax_temp=self.config.plan.softmax_temperature
         )
+        self.episode_reward += r
 
-        # tensors were created for tensorflow, which has channel-last input shape
-        # but pytorch has channel-first input shape.
-
-        logits = self.model(observations)
+        logits, features = self.model(observations)
         loss = self.criterion(logits, target_policy)
 
-        if episode_done:
+        if self.episode_done: # simulator episode done, end current epoch
             self.episodes += 1
-            #print(f"Episode {self.episodes} finished after {self.episode_step} steps and {self.total_interactions.value} environment interactions")
-            self.log_dict({'episode': float(self.episodes),
-                            'episode_steps': float(self.episode_step),
-                           'episode_reward': r})
+            self.log_dict({'train/episode': float(self.episodes),
+                           'train/episode_steps': float(self.episode_step),
+                           'train/episode_reward': self.episode_reward})
             self.tree = self.actor.reset()
             self.episode_step = 0
+            self.episode_reward = 0
 
         # Log loss and metric
         self.log_dict({"train/loss": loss,
@@ -159,7 +163,8 @@ class LightningDQN(pl.LightningModule):
                 tree=self.tree,
                 cache_subtree=self.config.plan.cache_subtree,
                 discount_factor=self.config.plan.discount_factor,
-                n_action_space=self.env.action_space.n
+                n_action_space=self.env.action_space.n,
+                softmax_temp=self.config.plan.softmax_temperature
             )
             pbar.update(len(self.experience_replay) - cur_length)
             if episode_done:
@@ -190,6 +195,42 @@ class LightningDQN(pl.LightningModule):
 
         return policy_output
 
+    def test_model(self):
+        tree = self.actor.reset()
+        episode_rewards = 0
+
+        #test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
+        test_results = ExperienceReplay(
+            capacity=self.config.train.replay_capacity,
+            keys=self.config.train.experience_keys
+        )
+
+        images = []
+
+        for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
+            r, episode_done = planning_step(
+                actor=self.actor,
+                planner=self.planner,
+                interactions=self.interactions,
+                dataset=test_results,
+                tree=tree,
+                cache_subtree=self.config.plan.cache_subtree,
+                discount_factor=self.config.plan.discount_factor,
+                n_action_space=self.env.action_space.n,
+                softmax_temp=self.config.plan.softmax_temperature
+            )
+            images.append(self.actor.render(tree))
+            episode_rewards += r
+            wandb.log({'test/rewards': episode_rewards})
+
+            if episode_done:
+                wandb.log({'test/episode_steps': i})
+                break
+
+        wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
+        return OrderedDict({'testing_rewards': episode_rewards})
+
+
 
 def planning_step(actor,
                   planner,
@@ -198,7 +239,8 @@ def planning_step(actor,
                   tree,
                   cache_subtree,
                   discount_factor,
-                  n_action_space
+                  n_action_space,
+                  softmax_temp
                   ):
     interactions.reset_budget()
     planner.initialize(tree=tree)
@@ -210,13 +252,12 @@ def planning_step(actor,
                                 n_actions=n_action_space,
                                 discount_factor=discount_factor)
 
-    policy_output = softmax(step_Q, temp=0)
+    policy_output = softmax(step_Q, temp=softmax_temp)
     step_action = sample_pmf(policy_output)
 
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
-    tensor_pytorch_format = torch.tensor(prev_root_data["obs"], dtype=torch.float32)
-    tensor_pytorch_format = tensor_pytorch_format.permute(2, 0, 1).contiguous()
+    tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
 
     dataset.append({"observations": tensor_pytorch_format,
                     "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
