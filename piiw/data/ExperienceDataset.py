@@ -12,7 +12,7 @@ class ExperienceDataset(Dataset):
         sample_size: number of experiences to sample at a time
     """
 
-    def __init__(self, buffer: ExperienceReplay, sample_size, episode_length) -> None:
+    def __init__(self, buffer: ExperienceReplay, sample_size: int, episode_length: int) -> None:
         self.buffer = buffer
         self.sample_size = sample_size
         self.episode_length = episode_length
