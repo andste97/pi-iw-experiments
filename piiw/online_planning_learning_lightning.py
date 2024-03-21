@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 
 @hydra.main(
     config_path="models/config",
-    config_name="config_atari_dynamic.yaml",
+    config_name="config_dynamic.yaml",
     version_base="1.3",
 )
 def main(config):
@@ -44,7 +44,8 @@ def main(config):
 
     trainer = pl.Trainer(
         accelerator="auto",
-        max_epochs=config.train.max_epochs,
+        # max_epochs=config.train.max_epochs, # deprecated, use steps instead
+        max_steps=config.train.max_steps,
         logger=logger,
         callbacks=[checkpoint_callback],
         deterministic="warn",
