@@ -91,6 +91,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.episodes = 0
         self.initialize_experience_replay(self.config.train.batch_size)
         self.episode_reward = 0
+        self.episode_done = False
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
@@ -104,10 +105,20 @@ class LightningDQNDynamic(pl.LightningModule):
         )
         return [optimizer]
 
+    def on_train_batch_start(self, batch, batch_idx):
+        """This method gets called before each training step
+        If -1 is returned, the current epoch is ended
+        We use this to tie the epochs together with the episodes
+        of the simulator.
+        See: https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.hooks.ModelHooks.html#lightning.pytorch.core.hooks.ModelHooks.on_train_batch_start"""
+        if self.episode_done: # simulator episode done, end current epoch
+            self.episode_done = False
+            return -1
+
     def training_step(self, batch, batch_idx):
         observations, target_policy = batch
 
-        r, episode_done = planning_step(
+        r, self.episode_done = planning_step(
             actor=self.actor,
             planner=self.planner,
             interactions=self.interactions,
@@ -123,12 +134,15 @@ class LightningDQNDynamic(pl.LightningModule):
         logits, features = self.model(observations)
         loss = self.criterion(logits, target_policy)
 
-        if episode_done:
-            self.episodes += 1
+        # end of episode/epoch logging needs to go here
+        # because it doesn't get logged in on_train_batch_start
+        if self.episode_done:
             self.log_dict({'train/episode': float(self.episodes),
                            'train/episode_steps': float(self.episode_step),
-                           'train/episode_reward': self.episode_reward})
+                           'train/episode_reward': self.episode_reward,})
+            self.logger.save()
             self.tree = self.actor.reset()
+            self.episodes += 1
             self.episode_step = 0
             self.episode_reward = 0
 
@@ -186,6 +200,7 @@ class LightningDQNDynamic(pl.LightningModule):
 
             with torch.no_grad():
                 logits, features = model(x)
+                # Todo: check if pytorch softmax breaks something. After all it uses temp=1
             node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
             node.data["features"] = list(
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool

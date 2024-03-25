@@ -108,6 +108,23 @@ class LightningDQN(pl.LightningModule):
         )
         return [optimizer]
 
+    def on_train_batch_start(self, batch, batch_idx):
+        """This method gets called before each training step
+        If -1 is returned, the current epoch is ended
+        We use this to tie the epochs together with the episodes
+        of the simulator.
+        See: https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.hooks.ModelHooks.html#lightning.pytorch.core.hooks.ModelHooks.on_train_batch_start"""
+        if self.episode_done: # simulator episode done, end current epoch
+            self.episode_done = False
+            self.episodes += 1
+            self.log_dict({'train/episode': float(self.episodes),
+                           'train/episode_steps': float(self.episode_step),
+                           'train/episode_reward': self.episode_reward})
+            self.tree = self.actor.reset()
+            self.episode_step = 0
+            self.episode_reward = 0
+            return -1
+
     def training_step(self, batch, batch_idx):
         observations, target_policy = batch
 
