@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+import omegaconf
 from omegaconf import OmegaConf
 import torch
 from torch.utils.data import DataLoader
@@ -17,6 +18,7 @@ from planners.rollout_IW import RolloutIW
 from tree_utils.tree_actor import EnvTreeActor
 from utils.interactions_counter import InteractionsCounter
 from utils.utils import softmax, sample_pmf, reward_in_tree, display_image_cv2
+from utils.pytorch_utils import configure_optimizer_based_on_config
 from atari_utils.atari_wrappers import is_atari_env
 
 
@@ -24,10 +26,8 @@ class LightningDQNDynamic(pl.LightningModule):
     """The model used by MNIH 2013 paper of DQN."""
 
     def __init__(self,
-                 config):
+                 config: omegaconf.DictConfig):
         super().__init__()
-        if(not OmegaConf.is_config(config)):
-            config = OmegaConf.create(config)
 
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
@@ -95,14 +95,7 @@ class LightningDQNDynamic(pl.LightningModule):
 
     def configure_optimizers(self):
         """ Initialize optimizer"""
-        optimizer = torch.optim.RMSprop(
-            self.model.parameters(),
-            lr=self.config.train.learning_rate,
-            alpha=self.config.train.rmsprop_alpha,  # same as rho in tf
-            eps=self.config.train.rmsprop_epsilon,
-            weight_decay=self.config.train.l2_reg_factor
-            # use this for l2 regularization to replace TF regularization implementation
-        )
+        optimizer = configure_optimizer_based_on_config(self.model, self.config)
         return [optimizer]
 
     def on_train_batch_start(self, batch, batch_idx):

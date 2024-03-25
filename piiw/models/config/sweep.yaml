@@ -1,15 +1,17 @@
 program: ./piiw/online_planning_learning_lightning.py
-method: bayes
+method: random
 metric:
   name: train/episode_reward
   goal: maximize
 parameters:
   train.learning_rate:
     min: 0.00001
-    max: 0.001
+    max: 0.005
   plan.softmax_temperature:
     min: 0.0
-    max: 0.7
+    max: 0.9
+  train.optim:
+    values: ["adam", "rmsprop", "adamw"]
 command:
   - python
   - ${program}

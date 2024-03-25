@@ -1,4 +1,6 @@
 import hydra
+from omegaconf import OmegaConf
+
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 
@@ -20,6 +22,9 @@ import pytorch_lightning as pl
 def main(config):
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
+
+    if (not OmegaConf.is_config(config)):
+        config = OmegaConf.create(config)
 
     logger = WandbLogger(
         project="pi-iw-experiments-piiw",
