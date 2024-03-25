@@ -137,11 +137,12 @@ class LightningDQNDynamic(pl.LightningModule):
         # end of episode/epoch logging needs to go here
         # because it doesn't get logged in on_train_batch_start
         if self.episode_done:
-            self.episodes += 1
             self.log_dict({'train/episode': float(self.episodes),
                            'train/episode_steps': float(self.episode_step),
-                           'train/episode_reward': self.episode_reward})
+                           'train/episode_reward': self.episode_reward,})
+            self.logger.save()
             self.tree = self.actor.reset()
+            self.episodes += 1
             self.episode_step = 0
             self.episode_reward = 0
 

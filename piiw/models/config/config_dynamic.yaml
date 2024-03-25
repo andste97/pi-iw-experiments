@@ -24,7 +24,7 @@ plan:
 
 train:
   env_id: "GE_MazeKeyDoor-v2"
-  seed: 134143
+  seed: 0
   batch_size: 32
   episode_length: 200 # always 200 for gridenvs
   learning_rate: 0.0007

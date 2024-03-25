@@ -49,7 +49,8 @@ def main(config):
         logger=logger,
         callbacks=[checkpoint_callback],
         deterministic="warn",
-        enable_checkpointing=True
+        enable_checkpointing=True,
+        log_every_n_steps=1
     )
 
     trainer.fit(
