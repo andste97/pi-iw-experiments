@@ -16,4 +16,4 @@ command:
   - python
   - ${program}
   - ${args_no_hyphens}
-  - train.max_epochs=5
+  - project_name="sweep-gridenv-softmax-fixed"

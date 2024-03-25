@@ -27,7 +27,7 @@ def main(config):
         config = OmegaConf.create(config)
 
     logger = WandbLogger(
-        project="pi-iw-experiments-piiw",
+        project=config.project_name,
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
         #offline=True,
         #log_model=False # needs to be False when offline is enabled
