@@ -3,7 +3,7 @@ import torch
 import pytorch_lightning as pl
 
 
-def configure_optimizer_based_on_config(model: torch.nn.Module, config: DictConfig) -> torch.optim.optimizer:
+def configure_optimizer_based_on_config(model: torch.nn.Module, config: DictConfig) -> torch.optim.Optimizer:
     if "train.optim" in config:
         if config.train.optim == "adam":
             optimizer = torch.optim.Adam(

@@ -16,4 +16,3 @@ command:
   - python
   - ${program}
   - ${args_no_hyphens}
-  - project_name="sweep-gridenv-softmax-fixed"
