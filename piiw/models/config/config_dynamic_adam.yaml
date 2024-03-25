@@ -1,3 +1,8 @@
+# This configuration is the same as the default config, but with
+# a newer learning rate found during a hyperparameter search in the gridenv world
+# and using the adam optimizer. The adam optimizer seemed to provide more stable result
+# during this hyperparameter search:
+
 project_name: "pi-iw-experiments-piiw"
 model:
   conv1_in_channels: 3
@@ -13,8 +18,8 @@ model:
   fc1_out_features: 256 # also output layer in_features
   # num_logits: 5 # This value needs to be set dynamically as it depends on the
                   # size of the environment action space. For gridenvs: 5
-  add_value: False
-  use_dynamic_features: False # set this to true to add dynamic features to model output, otherwise uses BASIC features
+  add_value: False # Instead of a policy this will output the action value
+  use_dynamic_features: True # set this to true to add dynamic features to model output
 
 plan:
   interactions_budget: 50
@@ -25,11 +30,11 @@ plan:
 
 train:
   env_id: "GE_MazeKeyDoor-v2"
-  optim: "rmsprop"
+  optim: "adam"
   seed: 0
   batch_size: 32
   episode_length: 200 # always 200 for gridenvs
-  learning_rate: 0.0007
+  learning_rate: 0.0027
   replay_capacity: 1000
   total_interaction_budget: 1000000
   l2_reg_factor: 0.001
@@ -39,6 +44,6 @@ train:
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   atari_frameskip: 15
-  # max_epochs: 200 # number of epochs the trainer will train the model for
+  max_epochs: 300 # number of epochs the trainer will train the model for
   max_steps: 40000 # max number of steps the trainer will train the model for
   # using steps instead of epochs ensures every model gets the same number of training steps
