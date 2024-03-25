@@ -1,4 +1,6 @@
 import hydra
+from omegaconf import OmegaConf
+
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 
@@ -21,8 +23,11 @@ def main(config):
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
 
+    if (not OmegaConf.is_config(config)):
+        config = OmegaConf.create(config)
+
     logger = WandbLogger(
-        project="pi-iw-experiments-piiw",
+        project=config.project_name,
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
         #offline=True,
         #log_model=False # needs to be False when offline is enabled

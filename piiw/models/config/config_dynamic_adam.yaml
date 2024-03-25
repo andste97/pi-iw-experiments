@@ -1,6 +1,11 @@
+# This configuration is the same as the default config, but with
+# a newer learning rate found during a hyperparameter search in the gridenv world
+# and using the adam optimizer. The adam optimizer seemed to provide more stable result
+# during this hyperparameter search:
+
 project_name: "pi-iw-experiments-piiw"
 model:
-  conv1_in_channels: 4
+  conv1_in_channels: 3
   conv1_out_channels: 16 # also conv1 out_channels
   conv1_kernel_size: 8
   conv1_stride: 4
@@ -17,21 +22,21 @@ model:
   use_dynamic_features: True # set this to true to add dynamic features to model output
 
 plan:
-  interactions_budget: 100 # This had been increased to 100 according to the paper
+  interactions_budget: 50
   width: 1  # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
   discount_factor: 0.99
   cache_subtree: True
   softmax_temperature: 0.5
 
 train:
-  env_id: "ChopperCommand-v4"
-  optim: "rmsprop"
+  env_id: "GE_MazeKeyDoor-v2"
+  optim: "adam"
   seed: 0
   batch_size: 32
-  episode_length: 18000 # They used 18.000 steps according for this according to phd thesis
-  learning_rate: 0.0005
-  replay_capacity: 10000
-  total_interaction_budget: 40000000
+  episode_length: 200 # always 200 for gridenvs
+  learning_rate: 0.0027
+  replay_capacity: 1000
+  total_interaction_budget: 1000000
   l2_reg_factor: 0.001
   clip_grad_norm: 40
   rmsprop_alpha: 0.99 # same as rho in tf
@@ -39,6 +44,6 @@ train:
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   atari_frameskip: 15
-  # max_epochs: 15 # number of epochs the trainer will train the model for
-  max_steps: 270000 # max number of steps the trainer will train the model for
-                    # using steps instead of epochs ensures every model gets the same number of training steps
+  max_epochs: 300 # number of epochs the trainer will train the model for
+  max_steps: 40000 # max number of steps the trainer will train the model for
+  # using steps instead of epochs ensures every model gets the same number of training steps
