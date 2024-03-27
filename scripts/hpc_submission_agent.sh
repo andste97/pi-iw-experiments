@@ -57,5 +57,7 @@ fi
 # shellcheck disable=SC2039
 source ../venv/bin/activate
 
+# go to project root
+cd ..
 # Start the wandb sweep agent with the provided ID
 wandb agent piiw-thesis/piiw-sweep/"$SWEEP_AGENT_ID"
