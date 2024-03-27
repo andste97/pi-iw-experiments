@@ -1,0 +1,19 @@
+program: ./piiw/online_planning_learning_lightning.py
+method: random
+metric:
+  name: train/episode_reward
+  goal: maximize
+parameters:
+  train.learning_rate:
+    min: 0.00001
+    max: 0.001
+  plan.softmax_temperature:
+    min: 0.0
+    max: 0.9
+  # empirically, adam optimizer didn't work so well, no need to search for hyperparams
+command:
+  - python
+  - ${program}
+  - --config-name config_atari_dynamic.yaml
+  - ${args_no_hyphens}
+  - train.max_steps=180000

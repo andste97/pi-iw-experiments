@@ -29,9 +29,9 @@ def main(config):
     logger = WandbLogger(
         project=config.project_name,
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
-        #offline=True,
-        #log_model=False # needs to be False when offline is enabled
-        log_model='all'
+        offline=True,
+        log_model=False # needs to be False when offline is enabled
+        #log_model='all'
     )
 
 
@@ -41,6 +41,7 @@ def main(config):
     else:
         model = LightningDQN(config)
 
+    logger.watch(model)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         monitor="train/episode_reward",
         save_on_train_epoch_end=True,

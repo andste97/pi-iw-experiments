@@ -1,6 +1,31 @@
 #!/bin/sh
 
+# Check if required parameters are input as flags
+SWEEP_AGENT_ID=""
+while getopts ":i:" opt; do
+  case ${opt} in
+    i )
+      SWEEP_AGENT_ID=$OPTARG
+      ;;
+    \? )
+      echo "Invalid option: $OPTARG" 1>&2
+      ;;
+    : )
+      echo "Invalid option: $OPTARG requires an argument" 1>&2
+      ;;
+  esac
+done
+shift $((OPTIND -1))
+
+# Ensure the SWEEP_AGENT_ID is provided
+if [ -z "$SWEEP_AGENT_ID" ]; then
+  echo "Error: Sweep agent ID not provided. Use -i <ID> to specify it."
+  exit 1
+fi
+
 ### General options
+### -- set the job Name AND the job array --
+#BSUB -J PIIW-sweep[1-5]
 ### -- specify queue --
 #BSUB -q hpc
 ### -- set the job Name --
@@ -14,7 +39,7 @@
 ### -- specify that we want the job to get killed if it exceeds 2 GB per core/slot --
 #BSUB -M 1GB
 ### -- set walltime limit: hh:mm --
-#BSUB -W 24:00
+#BSUB -W 48:00
 ### -- set the email address --
 # please uncomment the following line and put in your e-mail address,
 # if you want to receive e-mail notifications on a non-default address
@@ -25,10 +50,12 @@
 #BSUB -N
 ### -- Specify the output and error file. %J is the job-id --
 ### -- -o and -e mean append, -oo and -eo mean overwrite --
-#BSUB -o Output_%J.out
-#BSUB -e Output_%J.err
+#BSUB -o hpc_out/Output_%J_%I.out
+#BSUB -e hpc_out/Output_%J_%I.err
 
-# here follow the commands you want to execute with input.in as the input file
+# Activate the virtual environment
 # shellcheck disable=SC2039
 source ../venv/bin/activate
-python3 ../piiw/online_planning_learning_lightning.py --config-name config_atari_dynamic.yaml > output.out
+
+# Start the wandb sweep agent with the provided ID
+wandb agent piiw-thesis/piiw-sweep/"$SWEEP_AGENT_ID"
