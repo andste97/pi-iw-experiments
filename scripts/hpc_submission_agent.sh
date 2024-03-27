@@ -28,8 +28,6 @@ fi
 #BSUB -J PIIW-sweep[1-5]
 ### -- specify queue --
 #BSUB -q hpc
-### -- set the job Name --
-#BSUB -J PI-IW-Atari
 ### -- ask for number of cores (default: 1) --
 #BSUB -n 8
 ### -- specify that the cores must be on the same host --
