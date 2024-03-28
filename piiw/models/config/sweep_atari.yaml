@@ -14,6 +14,6 @@ parameters:
 command:
   - python
   - ${program}
-  - --config-name config_atari_dynamic.yaml
+  - --config-name=config_atari_dynamic.yaml
   - ${args_no_hyphens}
   - train.max_steps=180000

@@ -1,28 +1,5 @@
 #!/bin/sh
 
-# Check if required parameters are input as flags
-SWEEP_AGENT_ID=""
-while getopts ":i:" opt; do
-  case ${opt} in
-    i )
-      SWEEP_AGENT_ID=$OPTARG
-      ;;
-    \? )
-      echo "Invalid option: $OPTARG" 1>&2
-      ;;
-    : )
-      echo "Invalid option: $OPTARG requires an argument" 1>&2
-      ;;
-  esac
-done
-shift $((OPTIND -1))
-
-# Ensure the SWEEP_AGENT_ID is provided
-if [ -z "$SWEEP_AGENT_ID" ]; then
-  echo "Error: Sweep agent ID not provided. Use -i <ID> to specify it."
-  exit 1
-fi
-
 ### General options
 ### -- set the job Name AND the job array --
 #BSUB -J PIIW-sweep[1-5]
@@ -58,4 +35,4 @@ source ../venv/bin/activate
 # go to project root
 cd ..
 # Start the wandb sweep agent with the provided ID
-wandb agent piiw-thesis/piiw-sweep/"$SWEEP_AGENT_ID"
+wandb agent piiw-thesis/piiw-sweep/<sweep-agent-id> output_job.out
