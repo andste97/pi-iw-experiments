@@ -1,4 +1,6 @@
 import hydra
+from omegaconf import OmegaConf
+
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 
@@ -21,6 +23,9 @@ def main(config):
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
 
+    if (not OmegaConf.is_config(config)):
+        config = OmegaConf.create(config)
+
     logger = WandbLogger(
         project="delayed_experience_replay",
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
@@ -36,6 +41,7 @@ def main(config):
     else:
         model = LightningDQN(config)
 
+    logger.watch(model)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         monitor="train/episode_reward",
         save_on_train_epoch_end=True,
@@ -44,11 +50,13 @@ def main(config):
 
     trainer = pl.Trainer(
         accelerator="auto",
-        max_epochs=config.train.max_epochs,
+        # max_epochs=config.train.max_epochs, # deprecated, use steps instead
+        max_steps=config.train.max_steps,
         logger=logger,
         callbacks=[checkpoint_callback],
         deterministic="warn",
-        enable_checkpointing=True
+        enable_checkpointing=True,
+        log_every_n_steps=1
     )
 
     trainer.fit(

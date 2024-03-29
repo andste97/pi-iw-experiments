@@ -1,3 +1,4 @@
+project_name: "pi-iw-experiments-piiw"
 model:
   conv1_in_channels: 3
   conv1_out_channels: 16 # also conv1 out_channels
@@ -20,10 +21,11 @@ plan:
   width: 1  # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
   discount_factor: 0.99
   cache_subtree: True
-  softmax_temperature: 1
+  softmax_temperature: 0.5
 
 train:
   env_id: "GE_MazeKeyDoor-v2"
+  optim: "rmsprop"
   seed: 0
   batch_size: 32
   episode_length: 200 # always 200 for gridenvs
@@ -37,4 +39,6 @@ train:
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   atari_frameskip: 15
-  max_epochs: 200 # number of epochs the trainer will train the model for
+  # max_epochs: 200 # number of epochs the trainer will train the model for
+  max_steps: 40000 # max number of steps the trainer will train the model for
+  # using steps instead of epochs ensures every model gets the same number of training steps
