@@ -225,7 +225,7 @@ class LightningDQNDynamic(pl.LightningModule):
                 n_action_space=self.env.action_space.n,
                 softmax_temp=self.config.plan.softmax_temperature
             )
-            images.append(self.actor.render(tree))
+            images.append(self.actor.render(tree, size=(200,200)))
             episode_rewards += r
             wandb.log({'test/rewards': episode_rewards})
 
