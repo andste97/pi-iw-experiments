@@ -14,6 +14,8 @@ import wandb
 
 from data.ExperienceDataset import ExperienceDataset
 from data.experience_replay import ExperienceReplay
+from planners.bfs import BFS
+from planners.bfs_best_first_planner import BFSBestFirstPlanner
 from planners.rollout_IW import RolloutIW
 from tree_utils.tree_actor import EnvTreeActor
 from utils.interactions_counter import InteractionsCounter
@@ -77,12 +79,20 @@ class LightningDQNDynamic(pl.LightningModule):
             applicable_actions_fn=self.applicable_actions_fn
         )
 
-        self.planner = RolloutIW(
-            policy_fn=network_policy,
+        # self.planner = RolloutIW(
+        #     policy_fn=network_policy,
+        #     generate_successor_fn=self.actor.generate_successor,
+        #     width=config.plan.width,
+        #     branching_factor=self.env.action_space.n
+        # )
+
+        self.planner = BFSBestFirstPlanner(
             generate_successor_fn=self.actor.generate_successor,
-            width=config.plan.width,
+            policy_fn=network_policy,
+            #width=config.plan.width,
             branching_factor=self.env.action_space.n
         )
+
 
         self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget() or reward_in_tree(tree))
 

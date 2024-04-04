@@ -41,7 +41,7 @@ class EnvTreeActor:
             assert self.applicable_actions_fn is not None, "Either specify an action or initialize EnvTreeActor with " \
                                                            "all the possible actions. In this last setting, an action that has not previously been selected for " \
                                                            "the given node will be chosen at random at each generate_successor call."
-            non_expanded_actions = list(set(self.applicable_actions_fn(node)) - set([child.data["a"] for child in node.children]))
+            non_expanded_actions = list(set(self.applicable_actions_fn()) - set([child.data["a"] for child in node.children]))
             if len(non_expanded_actions) == 0:
                 return None
             action = np.random.choice(non_expanded_actions)
