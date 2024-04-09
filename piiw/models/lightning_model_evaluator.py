@@ -1,9 +1,11 @@
+# This file is for additional tests on the policy.
+# Instead of using the planner, this one uses
+
 from collections import OrderedDict
 
 import omegaconf
 from omegaconf import OmegaConf
 import torch
-from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from tqdm import tqdm
 
@@ -11,29 +13,23 @@ from atari_utils.make_env import make_env
 from models.mnih_2013 import Mnih2013
 import numpy as np
 import wandb
-import scipy
 
-from data.ExperienceDataset import ExperienceDataset
 from data.experience_replay import ExperienceReplay
 from planners.rollout_IW import RolloutIW
 from tree_utils.tree_actor import EnvTreeActor
 from utils.interactions_counter import InteractionsCounter
 from utils.utils import softmax, sample_pmf, reward_in_tree, display_image_cv2
 from utils.pytorch_utils import configure_optimizer_based_on_config
-from atari_utils.atari_wrappers import is_atari_env
+import PIL
 
-
-class LightningDQNDynamic(pl.LightningModule):
+class LightningDQNTest(pl.LightningModule):
     """The model used by MNIH 2013 paper of DQN."""
-
     def __init__(self,
                  config: omegaconf.DictConfig):
         super().__init__()
 
         if (not OmegaConf.is_config(config)):
             config = OmegaConf.create(config)
-
-        assert config.model.use_dynamic_features
 
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
@@ -95,7 +91,6 @@ class LightningDQNDynamic(pl.LightningModule):
         self.tree = self.actor.reset()
         self.episode_step = 0
         self.episodes = 0
-        self.initialize_experience_replay(self.config.train.batch_size)
         self.episode_reward = 0
         self.episode_done = False
 
@@ -104,93 +99,11 @@ class LightningDQNDynamic(pl.LightningModule):
         optimizer = configure_optimizer_based_on_config(self.model, self.config)
         return [optimizer]
 
-    def on_train_batch_start(self, batch, batch_idx):
-        """This method gets called before each training step
-        If -1 is returned, the current epoch is ended
-        We use this to tie the epochs together with the episodes
-        of the simulator.
-        See: https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.hooks.ModelHooks.html#lightning.pytorch.core.hooks.ModelHooks.on_train_batch_start"""
-        if self.episode_done: # simulator episode done, end current epoch
-            self.episode_done = False
-            return -1
-
-    def training_step(self, batch, batch_idx):
-        observations, target_policy = batch
-
-        r, self.episode_done = planning_step(
-            actor=self.actor,
-            planner=self.planner,
-            interactions=self.interactions,
-            dataset=self.experience_replay,
-            tree=self.tree,
-            cache_subtree=self.config.plan.cache_subtree,
-            discount_factor=self.config.plan.discount_factor,
-            n_action_space=self.env.action_space.n,
-            softmax_temp=self.config.plan.softmax_temperature
-        )
-        self.episode_reward += r
-
-        logits, features = self.model(observations)
-        loss = self.criterion(logits, target_policy)
-
-        # end of episode/epoch logging needs to go here
-        # because it doesn't get logged in on_train_batch_start
-        if self.episode_done:
-            self.log_dict({'train/episode': float(self.episodes),
-                           'train/episode_steps': float(self.episode_step),
-                           'train/episode_reward': self.episode_reward,})
-            self.logger.save()
-            self.tree = self.actor.reset()
-            self.episodes += 1
-            self.episode_step = 0
-            self.episode_reward = 0
-
-        # Log loss and metric
-        self.log_dict({"train/loss": loss,
-                       'total_interactions': float(self.total_interactions.value)})
-
-        self.episode_step += 1
-        return OrderedDict({'loss': loss})
 
     def applicable_actions_fn(self):
         env_actions = list(range(self.env.action_space.n))
         return env_actions
 
-    def initialize_experience_replay(self, warmup_length):
-        pbar = tqdm(total=warmup_length, desc="Initializing experience replay")
-
-        # make sure we cannot get stuck in infinite loop
-        assert self.config.train.replay_capacity >= warmup_length
-
-        while len(self.experience_replay) < warmup_length:
-            cur_length = len(self.experience_replay)
-            r, episode_done = planning_step(
-                actor=self.actor,
-                planner=self.planner,
-                interactions=self.interactions,
-                dataset=self.experience_replay,
-                tree=self.tree,
-                cache_subtree=self.config.plan.cache_subtree,
-                discount_factor=self.config.plan.discount_factor,
-                n_action_space=self.env.action_space.n,
-                softmax_temp=self.config.plan.softmax_temperature
-            )
-            # self.actor.render(size=(800, 800), tree=self.tree)
-            pbar.update(len(self.experience_replay) - cur_length)
-            if episode_done:
-                self.tree = self.actor.reset()
-
-        self.tree = self.actor.reset()
-
-    def train_dataloader(self) -> DataLoader:
-        """Initialize the Replay Buffer dataset used for retrieving experiences"""
-        dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size,
-                                    self.config.train.episode_length)
-        dataloader = DataLoader(
-            dataset=dataset,
-            batch_size=self.config.train.batch_size,
-        )
-        return dataloader
 
     def get_compute_dynamic_policy_output_fn(self, model):
         def dynamic_policy_output(node):
@@ -199,8 +112,6 @@ class LightningDQNDynamic(pl.LightningModule):
 
             with torch.no_grad():
                 logits, features = model(x)
-                # Todo: check if pytorch softmax breaks something. After all it uses temp=1
-            #node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
             node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
             node.data["features"] = list(
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
@@ -211,36 +122,47 @@ class LightningDQNDynamic(pl.LightningModule):
         tree = self.actor.reset()
         episode_rewards = 0
 
-        #test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
-        test_results = ExperienceReplay(
-            capacity=self.config.train.replay_capacity,
-            keys=self.config.train.experience_keys
-        )
-
         images = []
+        feature_list = []
 
         for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
-            r, episode_done = planning_step(
-                actor=self.actor,
-                planner=self.planner,
-                interactions=self.interactions,
-                dataset=test_results,
-                tree=tree,
-                cache_subtree=self.config.plan.cache_subtree,
-                discount_factor=self.config.plan.discount_factor,
-                n_action_space=self.env.action_space.n,
-                softmax_temp=self.config.plan.softmax_temperature
-            )
+            node = tree.root
+
+            x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32,
+                             device=self.device)
+
+
+            with torch.no_grad():
+                logits, features = self.model(x)
+            #node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=0)
+            #node.data["features"] = list(enumerate(features.to("cpu").numpy().ravel().astype(bool)))
+
+            probs = softmax(np.array(logits.to("cpu").ravel()), temp=0)
+            features = list(enumerate(features.to("cpu").numpy().ravel().astype(bool)))
+            feature_list.append(features)
+
+            step_action = sample_pmf(probs)
+            self.actor.generate_successor(tree, node, step_action)
+            prev_root_data, node = self.actor.step(tree, step_action, cache_subtree=False)
+
+
             images.append(self.actor.render(tree, size=(200,200)))
-            episode_rewards += r
+            episode_rewards += node.data["r"]
             wandb.log({'test/rewards': episode_rewards})
 
-            if episode_done:
+            if node.data["done"]:
                 wandb.log({'test/episode_steps': i})
                 break
 
+        result = []
+        for featurel in feature_list:
+            result.append([int(feature[1]) for feature in featurel])
+        result = np.array(result)
+        result *= 255
+        result = np.transpose(result) # make steps go from left to right. I.e. leftmost column -> 1. step, rightmost -> last step
         wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
-        return OrderedDict({'testing_rewards': episode_rewards})
+        wandb.log({"test/features": wandb.Image(result, caption="some caption")})
+
 
 def planning_step(actor,
                   planner,

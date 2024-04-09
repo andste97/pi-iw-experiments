@@ -43,9 +43,9 @@ def main(config):
 
     logger.watch(model)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="train/episode_reward",
+        #monitor="train/episode_reward",
         save_on_train_epoch_end=True,
-        mode='max'
+        every_n_epochs=5
     )
 
     trainer = pl.Trainer(
