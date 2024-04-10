@@ -56,7 +56,9 @@ def main(config):
         callbacks=[checkpoint_callback],
         deterministic="warn",
         enable_checkpointing=True,
-        log_every_n_steps=1
+        log_every_n_steps=1,
+        check_val_every_n_epoch=3,
+        num_sanity_val_steps=0
     )
 
     trainer.fit(
@@ -65,7 +67,7 @@ def main(config):
     # save logged data
     logger.save()
 
-    model.test_model()
+    model.validation_step({}, 1)
 
 
 if __name__ == "__main__":

@@ -3,15 +3,16 @@ from collections import OrderedDict
 import omegaconf
 from omegaconf import OmegaConf
 import torch
+from pytorch_lightning.utilities.types import EVAL_DATALOADERS
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from tqdm import tqdm
 
 from atari_utils.make_env import make_env
+from data.test_dummy_dataset import DummyDataset
 from models.mnih_2013 import Mnih2013
 import numpy as np
 import wandb
-import scipy
 
 from data.ExperienceDataset import ExperienceDataset
 from data.experience_replay import ExperienceReplay
@@ -192,6 +193,15 @@ class LightningDQNDynamic(pl.LightningModule):
         )
         return dataloader
 
+    def val_dataloader(self) -> EVAL_DATALOADERS:
+        dataset = DummyDataset(1)
+        dataloader = DataLoader(
+            dataset=dataset,
+            batch_size=1
+        )
+
+        return dataloader
+
     def get_compute_dynamic_policy_output_fn(self, model):
         def dynamic_policy_output(node):
             x = torch.tensor(np.expand_dims(node.data["obs"], axis=0), dtype=torch.float32,
@@ -207,11 +217,10 @@ class LightningDQNDynamic(pl.LightningModule):
 
         return dynamic_policy_output
 
-    def test_model(self):
+    def validation_step(self, batch, batch_idx):
         tree = self.actor.reset()
         episode_rewards = 0
 
-        #test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
         test_results = ExperienceReplay(
             capacity=self.config.train.replay_capacity,
             keys=self.config.train.experience_keys
