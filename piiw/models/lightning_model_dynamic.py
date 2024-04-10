@@ -209,9 +209,9 @@ class LightningDQNDynamic(pl.LightningModule):
 
             with torch.no_grad():
                 logits, features = model(x)
-                # Todo: check if pytorch softmax breaks something. After all it uses temp=1
-            #node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
-            node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
+            node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
+            # do not use the custom softmax, original code uses tensorflow softmax here
+            #node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
             node.data["features"] = list(
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
 

@@ -48,7 +48,7 @@ More information can be found here:
 
 ### Initializing a sweep
 From project root run command: 
-`wand sweep --project <sweep-project-name> ./piiw/models/config/sweep.yaml`
+`wandb sweep --project <sweep-project-name> ./piiw/models/config/sweep.yaml`
 
 ### Starting sweep agents
 From project root repository, run command:
