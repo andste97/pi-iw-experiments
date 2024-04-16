@@ -31,6 +31,8 @@ class LightningDQN(pl.LightningModule):
         if(not OmegaConf.is_config(config)):
             config = OmegaConf.create(config)
 
+        assert config.model.use_dynamic_features == False
+
         self.config = config
         self.save_hyperparameters(OmegaConf.to_container(config))
 
