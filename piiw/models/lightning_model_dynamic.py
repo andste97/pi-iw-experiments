@@ -42,6 +42,9 @@ class LightningDQNDynamic(pl.LightningModule):
 
         self.env = make_env(config.train.env_id, config.train.episode_length,
                             atari_frameskip=config.train.atari_frameskip)
+        # set env seed
+        self.env.seed(config.train.seed)
+
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
@@ -89,7 +92,8 @@ class LightningDQNDynamic(pl.LightningModule):
             policy_fn=network_policy,
             generate_successor_fn=self.actor.generate_successor,
             width=config.plan.width,
-            branching_factor=self.env.action_space.n
+            branching_factor=self.env.action_space.n,
+            ignore_cached_nodes=True
         )
 
         self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget() or reward_in_tree(tree))
@@ -221,9 +225,7 @@ class LightningDQNDynamic(pl.LightningModule):
 
             with torch.no_grad():
                 logits, features = model(x)
-            node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
-            # do not use the custom softmax, original code uses tensorflow softmax here
-            #node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
+            node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
             node.data["features"] = list(
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
 
@@ -283,7 +285,7 @@ def planning_step(actor,
                                 n_actions=n_action_space,
                                 discount_factor=discount_factor)
 
-    policy_output = softmax(step_Q, temp=softmax_temp)
+    policy_output = softmax(step_Q, temp=0)
     step_action = sample_pmf(policy_output)
 
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)

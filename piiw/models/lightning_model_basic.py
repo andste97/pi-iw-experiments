@@ -210,7 +210,7 @@ class LightningDQN(pl.LightningModule):
 
             with torch.no_grad():
                 logits = model(x)
-            node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
+            node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
 
         return policy_output
 
@@ -271,7 +271,7 @@ def planning_step(actor,
                                 n_actions=n_action_space,
                                 discount_factor=discount_factor)
 
-    policy_output = softmax(step_Q, temp=softmax_temp)
+    policy_output = softmax(step_Q, temp=0)
     step_action = sample_pmf(policy_output)
 
     prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
