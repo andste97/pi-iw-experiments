@@ -36,6 +36,7 @@ train:
   episode_length: 200 # always 200 for gridenvs
   learning_rate: 0.0027
   replay_capacity: 1000
+  replay_init_capacity: 100
   total_interaction_budget: 1000000
   l2_reg_factor: 0.001
   clip_grad_norm: 40

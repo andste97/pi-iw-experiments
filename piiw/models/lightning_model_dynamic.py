@@ -103,7 +103,7 @@ class LightningDQNDynamic(pl.LightningModule):
         self.episodes = 0
         self.aux_replay = []
         self.best_episode_reward = -sys.maxsize - 1
-        self.initialize_experience_replay(5000)
+        self.initialize_experience_replay(config.train.replay_init_capacity)
         self.episode_reward = 0
         self.episode_done = False
 
