@@ -10,6 +10,12 @@ For atari games, use the deterministic version of the gym environments, which ca
 * Install the [requirements](requirements.txt)
 * Make sure that [gridenvs](https://github.com/aig-upf/gridenvs) are added to the python path.
 
+### Installing Pygraphviz on Windows
+1. Install windows C++ 14.0 or newer build tools
+2. Install graphviz from <https://gitlab.com/graphviz/graphviz/-/releases>
+    * Choose that information will be added to PATH for user
+3. Install pygraphviz from with command: `conda install -c alubbock pygraphviz` (will fail if not installed through conda)
+
 ## Docker containers
 
 ### Commands to build docker containers

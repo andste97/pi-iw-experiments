@@ -25,7 +25,7 @@ from models.lightning_model_evaluator import LightningDQNTest
     version_base="1.3",
 )
 def main(config):
-    eval_checkpoint_name = 'piiw-thesis/pi-iw-experiments-piiw/model-GE_MazeKeyDoor-v2_2024-04-09_18-24-08.301983:v100'
+    eval_checkpoint_name = 'piiw-thesis/pi-iw-experiments-piiw/model-GE_MazeKeyDoor-v2_2024-04-10_11-07-45.212123:v14'
 
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
