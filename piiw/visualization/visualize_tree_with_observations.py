@@ -12,9 +12,8 @@ def visualize_tree_with_observations(node: Node, fname):
     G.add_node(node, obs=node.data["obs"][0])
     create_networkx_graph(node, G)
     create_tree_layout_with_observations(G)
-    #plt.savefig(fname)
-    plt.box(False)
     plt.savefig(fname, bbox_inches='tight', pad_inches=0)
+    plt.close()
 
 def visualize_tree_no_observations(node: Node, path):
     G = nx.DiGraph()
