@@ -22,7 +22,7 @@ from utils.interactions_counter import InteractionsCounter
 from utils.utils import softmax, sample_pmf, reward_in_tree, display_image_cv2
 from utils.pytorch_utils import configure_optimizer_based_on_config
 from visualization.visualize_tree_with_observations import visualize_tree_with_observations
-import os
+import sys
 
 
 class LightningDQNDynamic(pl.LightningModule):
@@ -276,27 +276,27 @@ class LightningDQNDynamic(pl.LightningModule):
                       discount_factor,
                       n_action_space,
                       softmax_temp,
-                      should_visualize
+                      should_visualize=False
                       ):
         interactions.reset_budget()
         planner.initialize(tree=tree)
         planner.plan(tree=tree)
 
-            actor.compute_returns(tree, discount_factor=discount_factor, add_value=False)
+        actor.compute_returns(tree, discount_factor=discount_factor, add_value=False)
 
-            step_Q = sample_best_action(node=tree.root,
-                                        n_actions=n_action_space,
-                                        discount_factor=discount_factor)
+        step_Q = sample_best_action(node=tree.root,
+                                    n_actions=n_action_space,
+                                    discount_factor=discount_factor)
 
-            policy_output = softmax(step_Q, temp=0)
-            step_action = sample_pmf(policy_output)
+        policy_output = softmax(step_Q, temp=0)
+        step_action = sample_pmf(policy_output)
 
-            if should_visualize:
-                visualize_tree_with_observations(tree.root, f'../reports/output_steps/ep_{self.episodes}_step_{self.episode_step}.png')
+        if should_visualize:
+            visualize_tree_with_observations(tree.root, f'../reports/output_steps/ep_{self.episodes}_step_{self.episode_step}.png')
 
-            prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
+        prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
-            tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
+        tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
 
         aux_replay.append({"observations": tensor_pytorch_format,
                         "target_policy": torch.tensor(policy_output, dtype=torch.float32)})

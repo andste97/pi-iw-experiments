@@ -27,6 +27,8 @@ train:
   env_id: "GE_MazeKeyDoor-v2"
   optim: "rmsprop"
   seed: 0
+  #seed: 465735
+  #seed: 123
   batch_size: 32
   episode_length: 200 # always 200 for gridenvs
   learning_rate: 0.0007
