@@ -33,7 +33,7 @@ class Tree:
         for n in reversed(list(self.root.breadth_first())):
             yield n
 
-    def new_root(self, node, keep_subtree):
+    def new_root(self, node: Node, keep_subtree):
         node.make_root()
         self.root = node
         if not keep_subtree:

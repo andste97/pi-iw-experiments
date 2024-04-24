@@ -26,7 +26,12 @@ def visualize_tree_no_observations(node: Node, path):
 def create_networkx_graph(node: Node, G: nx.DiGraph):
     for child in node.children:
         G.add_node(child, obs=node.data["obs"][0], R=int(node.data["R"]))
-        G.add_edge(node, child, a=child.data["a"])
+        if child.pruned:
+            edge_color="red"
+        else:
+            edge_color="black"
+
+        G.add_edge(node, child, a=child.data["a"], color=edge_color)
         create_networkx_graph(child, G)
 
 
@@ -54,6 +59,10 @@ def create_tree_layout_with_observations(G: nx.DiGraph):
     plt.box(False)
     pos = nx.nx_agraph.graphviz_layout(G, prog="dot")
     pos = nx.rescale_layout_dict(pos)
+
+    # get edge colors
+    edge_colors = [G[u][v]['color'] for u, v in G.edges()]
+
     # Note: the min_source/target_margin kwargs only work with FancyArrowPatch objects.
     # Force the use of FancyArrowPatch for edge drawing by setting `arrows=True`,
     # but suppress arrowheads with `arrowstyle="-"`
@@ -65,6 +74,7 @@ def create_tree_layout_with_observations(G: nx.DiGraph):
         arrowstyle="-",
         min_source_margin=15,
         min_target_margin=15,
+        edge_color=edge_colors
     )
 
     draw_edge_labels(G, pos)

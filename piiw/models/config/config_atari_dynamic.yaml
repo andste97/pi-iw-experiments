@@ -24,7 +24,7 @@ plan:
   softmax_temperature: 0.5
 
 train:
-  env_id: "ChopperCommand-v4"
+  env_id: "Pong-v4"
   optim: "rmsprop"
   seed: 0
   batch_size: 32
