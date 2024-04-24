@@ -1,4 +1,6 @@
 from planners.planner import Planner
+from tree_utils.node import Node
+
 
 class WidthPlanner(Planner):
     def __init__(self, generate_successor_fn, width, ignore_cached_nodes, ignore_terminal_nodes, features_name):
@@ -8,7 +10,7 @@ class WidthPlanner(Planner):
         self.ignore_terminal_nodes = ignore_terminal_nodes
         self.features_name = features_name
 
-    def check_update_novelty(self, node, novelty_table, caching):
+    def check_update_novelty(self, node: Node, novelty_table, caching):
         """"Returns true if the node is novel and should not be pruned, if node is not novel,
         will return false and set node.pruned to true."""
         node.pruned = False

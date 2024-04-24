@@ -1,4 +1,6 @@
 import numpy as np
+
+from tree_utils.node import Node
 from utils.utils import sample_pmf
 from planners.rollout_labels_width_planner import RolloutLabelsWidthPlanner
 
@@ -87,7 +89,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
                 assert node is not None
                 self.rollout(tree, node, a, novelty_table, random=tree.root.next_rollout_random)
 
-    def select(self, node, novelty_table, random):
+    def select(self, node: Node, novelty_table, random):
         """
         Traverses the tree from node on and selects a node and an action that have not yet been expanded.
         :param node: Node where the tree traversing starts from.
@@ -117,7 +119,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
                 else:
                     node = child  # Continue traversing the tree
 
-    def select_action_following_policy(self, node, random):
+    def select_action_following_policy(self, node: Node, random):
         """
         Selects an action according to the policy given by _get_policy() (default is uniform distribution). It only
         takes into account nodes that have not been solved yet: it sets probabilities of already solved nodes to 0 and
@@ -173,7 +175,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
 
         return a, child
 
-    def rollout(self, tree, node, a, novelty_table, random):
+    def rollout(self, tree, node: Node, a, novelty_table, random):
         while not self.should_stop(tree):
             node = self.generate_successor(tree, node, a)
             assert node is not None, "Successor function not properly defined?"  # Can't use AbstractTreeActor here
