@@ -1,11 +1,6 @@
-import pygraphviz
-
 from tree_utils.node import Node
-from utils.utils import cstr
 import networkx as nx
 import matplotlib.pyplot as plt
-import numpy as np
-
 
 def visualize_tree_with_observations(node: Node, fname):
     G = nx.DiGraph()
