@@ -132,8 +132,7 @@ class LightningDQNDynamic(pl.LightningModule):
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
             n_action_space=self.env.action_space.n,
-            softmax_temp=self.config.plan.softmax_temperature,
-            should_visualize=True
+            softmax_temp=self.config.plan.softmax_temperature
         )
         self.episode_reward += r
 
