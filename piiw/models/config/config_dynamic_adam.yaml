@@ -1,3 +1,8 @@
+# This configuration is the same as the default config, but with
+# a newer learning rate found during a hyperparameter search in the gridenv world
+# and using the adam optimizer. The adam optimizer seemed to provide more stable result
+# during this hyperparameter search:
+
 project_name: "pi-iw-experiments-piiw"
 model:
   conv1_in_channels: 3
@@ -24,12 +29,12 @@ plan:
   softmax_temperature: 1
 
 train:
-  env_id: "GE_PathKeyDoor-v0"
-  optim: "rmsprop"
+  env_id: "GE_MazeKeyDoor-v2"
+  optim: "adam"
   seed: 0
   batch_size: 32
   episode_length: 200 # always 200 for gridenvs
-  learning_rate: 0.0007
+  learning_rate: 0.0027
   replay_capacity: 1000
   total_interaction_budget: 1000000
   l2_reg_factor: 0.001
@@ -39,6 +44,6 @@ train:
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   atari_frameskip: 15
-  # max_epochs: 30 # number of epochs the trainer will train the model for
-  max_steps: 6000 # max number of steps the trainer will train the model for
-  # using steps instead of epochs ensures every model gets the same number of training stepsc
+  max_epochs: 300 # number of epochs the trainer will train the model for
+  max_steps: 40000 # max number of steps the trainer will train the model for
+  # using steps instead of epochs ensures every model gets the same number of training steps

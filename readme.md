@@ -10,6 +10,12 @@ For atari games, use the deterministic version of the gym environments, which ca
 * Install the [requirements](requirements.txt)
 * Make sure that [gridenvs](https://github.com/aig-upf/gridenvs) are added to the python path.
 
+### Installing Pygraphviz on Windows
+1. Install windows C++ 14.0 or newer build tools
+2. Install graphviz from <https://gitlab.com/graphviz/graphviz/-/releases>
+    * Choose that information will be added to PATH for user
+3. Install pygraphviz from with command: `conda install -c alubbock pygraphviz` (will fail if not installed through conda)
+
 ## Docker containers
 
 ### Commands to build docker containers
@@ -32,6 +38,27 @@ See: https://hydra.cc/docs/advanced/override_grammar/basic/
 
 To overwrite the config to be used, use the key `--config-name <config_name.yaml>`
 
+## Submitting jobs to HPC
+
+To submit a job to the hpc, from the scripts directory, run command:
+
+`bsub < <hpc-submission-script>`
+
+More information can be found here:
+* Login: <https://www.hpc.dtu.dk/?page_id=2501>
+* Submission script: <https://www.hpc.dtu.dk/?page_id=1416>
+* Batch jobs: <https://www.hpc.dtu.dk/?page_id=1416>
+* 
+
+## Sweeps
+
+### Initializing a sweep
+From project root run command: 
+`wandb sweep --project <sweep-project-name> ./piiw/models/config/sweep.yaml`
+
+### Starting sweep agents
+From project root repository, run command:
+`wandb agent piiw-thesis/piiw-sweep/<sweep-id>`
 
 
 ## Project structure

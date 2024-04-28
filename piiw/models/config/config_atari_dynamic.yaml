@@ -1,3 +1,4 @@
+project_name: "pi-iw-experiments-piiw"
 model:
   conv1_in_channels: 4
   conv1_out_channels: 16 # also conv1 out_channels
@@ -23,7 +24,8 @@ plan:
   softmax_temperature: 0.5
 
 train:
-  env_id: "ChopperCommand-v4"
+  env_id: "Pong-v4"
+  optim: "rmsprop"
   seed: 0
   batch_size: 32
   episode_length: 18000 # They used 18.000 steps according for this according to phd thesis
@@ -37,4 +39,6 @@ train:
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   atari_frameskip: 15
-  max_epochs: 15 # number of epochs the trainer will train the model for
+  # max_epochs: 15 # number of epochs the trainer will train the model for
+  max_steps: 270000 # max number of steps the trainer will train the model for
+                    # using steps instead of epochs ensures every model gets the same number of training steps

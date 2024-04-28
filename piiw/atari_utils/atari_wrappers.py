@@ -101,14 +101,13 @@ def is_atari_env(env):
     import gym.envs.atari
     return isinstance(env.unwrapped, gym.envs.atari.AtariEnv)
 
-def wrap_atari_env(env, frameskip, max_steps):
+def wrap_atari_env(env, max_steps):
     # To get grayscale images, instead of wrapping the env, we modify the _get_obs function
     # this way, ale.getScreenGrayscale function is called instead of ale.getScreenRGB2
     # The RGB image will still show when rendering.
     env.unwrapped._get_obs = lambda: (
         env.unwrapped.ale.getScreenGrayscale()
     )
-    env.unwrapped.frameskip = frameskip
 
     env = FullCloneRestore(env)
     env = ResizeImage(env, new_size=(84, 84))

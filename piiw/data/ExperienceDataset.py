@@ -15,7 +15,7 @@ class ExperienceDataset(Dataset):
     def __init__(self, buffer: ExperienceReplay, sample_size: int, episode_length: int) -> None:
         self.buffer = buffer
         self.sample_size = sample_size
-        self.episode_length = episode_length
+        self.episode_length = episode_length + 1
 
     # def __iter__(self):
     #     _, batch = self.buffer.sample(self.sample_size)

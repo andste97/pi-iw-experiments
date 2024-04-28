@@ -1,4 +1,6 @@
 import hydra
+from omegaconf import OmegaConf
+
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 
@@ -21,8 +23,11 @@ def main(config):
     # set seeds, numpy for planner, torch for policy
     pl.seed_everything(config.train.seed)
 
+    if (not OmegaConf.is_config(config)):
+        config = OmegaConf.create(config)
+
     logger = WandbLogger(
-        project="pi-iw-experiments-piiw",
+        project=config.project_name,
         id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
         #offline=True,
         #log_model=False # needs to be False when offline is enabled
@@ -36,19 +41,24 @@ def main(config):
     else:
         model = LightningDQN(config)
 
+    logger.watch(model)
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="train/episode_reward",
+        #monitor="train/episode_reward",
         save_on_train_epoch_end=True,
-        mode='max'
+        every_n_epochs=5
     )
 
     trainer = pl.Trainer(
         accelerator="auto",
-        max_epochs=config.train.max_epochs,
+        # max_epochs=config.train.max_epochs, # deprecated, use steps instead
+        max_steps=config.train.max_steps,
         logger=logger,
         callbacks=[checkpoint_callback],
         deterministic="warn",
-        enable_checkpointing=True
+        enable_checkpointing=True,
+        log_every_n_steps=1,
+        check_val_every_n_epoch=3,
+        num_sanity_val_steps=0
     )
 
     trainer.fit(
@@ -57,7 +67,7 @@ def main(config):
     # save logged data
     logger.save()
 
-    model.test_model()
+    model.validation_step({}, 1)
 
 
 if __name__ == "__main__":
