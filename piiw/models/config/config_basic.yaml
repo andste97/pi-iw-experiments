@@ -20,7 +20,7 @@ plan:
   interactions_budget: 50
   width: 1  # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
   discount_factor: 0.99
-  cache_subtree: True
+  cache_subtree: False
   softmax_temperature: 1
 
 train:

@@ -58,8 +58,12 @@ class DQNDynamic:
         )
         wandb.watch(model, log_freq=50)
 
-        # todo: make this choose automatic cuda/cpu
         self.device = 'cpu'
+        if torch.cuda.is_available():
+            self.device = 'cuda'
+
+        print(f"Training on device: {self.device}")
+
         self.model = model.to(self.device)
 
         self.experience_replay = ExperienceReplay(
@@ -158,9 +162,7 @@ class DQNDynamic:
 
         # Initialize a variable to store the cumulative loss
         cumulative_loss = 0.0
-
-        num_batches = 5
-        for i in range(0, 5):
+        for i in range(0, self.config.step_train_batches):
             self.optimizer.zero_grad()
             self.model = self.model.to(self.device)
             logits, features = self.model(observations.to(self.device))
@@ -172,7 +174,7 @@ class DQNDynamic:
             cumulative_loss += loss.item()
 
         # Calculate the average loss over the three batches
-        average_loss = cumulative_loss / 5
+        average_loss = cumulative_loss / self.config.step_train_batches
 
         # Log loss and metric
         wandb.log({"train/loss": average_loss,
