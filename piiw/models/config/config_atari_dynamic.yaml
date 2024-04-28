@@ -31,7 +31,7 @@ train:
   episode_length: 18000 # They used 18.000 steps according for this according to phd thesis
   learning_rate: 0.0005
   replay_capacity: 10000
-  total_interaction_budget: 40000000
+  total_interaction_budget: 20000000
   l2_reg_factor: 0.001
   clip_grad_norm: 40
   rmsprop_alpha: 0.99 # same as rho in tf

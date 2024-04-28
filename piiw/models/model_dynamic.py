@@ -39,6 +39,9 @@ class DQNDynamic:
 
         self.env = make_env(config.train.env_id, config.train.episode_length,
                             atari_frameskip=config.train.atari_frameskip)
+        # set env seed
+        self.env.seed(config.train.seed)
+
         model = Mnih2013(
             conv1_in_channels=config.model.conv1_in_channels,
             conv1_out_channels=config.model.conv1_out_channels,
@@ -92,7 +95,8 @@ class DQNDynamic:
             policy_fn=network_policy,
             generate_successor_fn=self.actor.generate_successor,
             width=config.plan.width,
-            branching_factor=self.env.action_space.n
+            branching_factor=self.env.action_space.n,
+            ignore_cached_nodes=True
         )
 
         self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget() or reward_in_tree(tree))
@@ -102,6 +106,7 @@ class DQNDynamic:
         self.episodes = 0
         self.initialize_experience_replay(self.config.train.batch_size)
         self.episode_reward = 0
+        self.episode_done = False
 
     def configure_optimizer(self):
         """ Initialize optimizer"""
@@ -116,7 +121,7 @@ class DQNDynamic:
         return optimizer
 
     def fit(self):
-        for i in range(0, self.config.train.max_epochs):
+        while self.total_interactions.within_budget():
             self.train_episode()
 
             # log stuff and reset after episode is done
@@ -138,7 +143,7 @@ class DQNDynamic:
     def training_step(self, batch):
         observations, target_policy = batch
 
-        r, episode_done = planning_step(
+        r, episode_done = self.planning_step(
             actor=self.actor,
             planner=self.planner,
             interactions=self.interactions,
@@ -151,15 +156,26 @@ class DQNDynamic:
         )
         self.episode_reward += r
 
-        self.optimizer.zero_grad()
-        self.model = self.model.to(self.device)
-        logits, features = self.model(observations.to(self.device))
-        loss = self.criterion(logits, target_policy.to(self.device))
-        loss.backward()
-        self.optimizer.step()
+        # Initialize a variable to store the cumulative loss
+        cumulative_loss = 0.0
+
+        num_batches = 5
+        for i in range(0, 5):
+            self.optimizer.zero_grad()
+            self.model = self.model.to(self.device)
+            logits, features = self.model(observations.to(self.device))
+            loss = self.criterion(logits, target_policy.to(self.device))
+            loss.backward()
+            self.optimizer.step()
+
+            # Add the current batch loss to the cumulative loss
+            cumulative_loss += loss.item()
+
+        # Calculate the average loss over the three batches
+        average_loss = cumulative_loss / 5
 
         # Log loss and metric
-        wandb.log({"train/loss": loss,
+        wandb.log({"train/loss": average_loss,
                    'total_interactions': float(self.total_interactions.value)})
 
         self.episode_step += 1
@@ -177,7 +193,7 @@ class DQNDynamic:
 
         while len(self.experience_replay) < warmup_length:
             cur_length = len(self.experience_replay)
-            r, episode_done = planning_step(
+            r, episode_done = self.planning_step(
                 actor=self.actor,
                 planner=self.planner,
                 interactions=self.interactions,
@@ -198,7 +214,7 @@ class DQNDynamic:
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
         dataset = ExperienceDataset(self.experience_replay, self.config.train.batch_size,
-                                    1)
+                                    self.config.train.episode_length)
         dataloader = DataLoader(
             dataset=dataset,
             batch_size=self.config.train.batch_size,
@@ -212,7 +228,7 @@ class DQNDynamic:
 
             with torch.no_grad():
                 logits, features = model(x)
-            node.data["probs"] = np.array(torch.nn.functional.softmax(logits, dim=1).to("cpu").data).ravel()
+            node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
             node.data["features"] = list(
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
 
@@ -231,7 +247,7 @@ class DQNDynamic:
         images = []
 
         for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
-            r, episode_done = planning_step(
+            r, episode_done = self.planning_step(
                 actor=self.actor,
                 planner=self.planner,
                 interactions=self.interactions,
@@ -242,7 +258,7 @@ class DQNDynamic:
                 n_action_space=self.env.action_space.n,
                 softmax_temp=self.config.plan.softmax_temperature
             )
-            images.append(self.actor.render(tree))
+            images.append(self.actor.render(tree, size=(200,200)))
             episode_rewards += r
             wandb.log({'test/rewards': episode_rewards})
 
@@ -253,37 +269,42 @@ class DQNDynamic:
         wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
         return OrderedDict({'testing_rewards': episode_rewards})
 
+    def planning_step(self,
+                      actor,
+                      planner,
+                      interactions,
+                      dataset,
+                      tree,
+                      cache_subtree,
+                      discount_factor,
+                      n_action_space,
+                      softmax_temp,
+                      should_visualize=False
+                      ):
+        interactions.reset_budget()
+        planner.initialize(tree=tree)
+        planner.plan(tree=tree)
 
-def planning_step(actor,
-                  planner,
-                  interactions,
-                  dataset,
-                  tree,
-                  cache_subtree,
-                  discount_factor,
-                  n_action_space,
-                  softmax_temp
-                  ):
-    interactions.reset_budget()
-    planner.initialize(tree=tree)
-    planner.plan(tree=tree)
+        actor.compute_returns(tree, discount_factor=discount_factor, add_value=False)
 
-    actor.compute_returns(tree, discount_factor=discount_factor, add_value=False)
+        step_Q = sample_best_action(node=tree.root,
+                                    n_actions=n_action_space,
+                                    discount_factor=discount_factor)
 
-    step_Q = sample_best_action(node=tree.root,
-                                n_actions=n_action_space,
-                                discount_factor=discount_factor)
+        policy_output = softmax(step_Q, temp=0)
+        step_action = sample_pmf(policy_output)
 
-    policy_output = softmax(step_Q, temp=softmax_temp)
-    step_action = sample_pmf(policy_output)
+        if should_visualize:
+            from visualization.visualize_tree_with_observations import visualize_tree_with_observations
+            visualize_tree_with_observations(tree.root, f'../reports/output_steps/ep_{self.episodes}_step_{self.episode_step}.png')
 
-    prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
+        prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
-    tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
+        tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
 
-    dataset.append({"observations": tensor_pytorch_format,
-                    "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
-    return current_root.data["r"], current_root.data["done"]
+        dataset.append({"observations": tensor_pytorch_format,
+                        "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
+        return current_root.data["r"], current_root.data["done"]
 
 
 def network_policy(node):
