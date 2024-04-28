@@ -23,13 +23,6 @@ def main(config):
     # set seeds, numpy for planner, torch for policy
     seed_everything(config.train.seed)
 
-    run = wandb.init(
-        project="pi-iw-experiments-piiw",
-        id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
-        #mode='offline',
-    )
-
-
     # choose wither to uses dynamic or BASIC features
     model = DQNDynamic(config)
     model.fit()
