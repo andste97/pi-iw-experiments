@@ -132,7 +132,8 @@ class DQNDynamic:
             self.episodes += 1
             wandb.log({'train/episode': float(self.episodes),
                        'train/episode_steps': float(self.episode_step),
-                       'train/episode_reward': self.episode_reward})
+                       'train/episode_reward': self.episode_reward,
+                       'total_interactions': float(self.total_interactions.value),})
             self.tree = self.actor.reset()
             self.episode_step = 0
             self.episode_reward = 0
@@ -162,7 +163,7 @@ class DQNDynamic:
 
         # Initialize a variable to store the cumulative loss
         cumulative_loss = 0.0
-        for i in range(0, self.config.step_train_batches):
+        for i in range(0, self.config.train.step_train_batches):
             self.optimizer.zero_grad()
             self.model = self.model.to(self.device)
             logits, features = self.model(observations.to(self.device))
@@ -174,7 +175,7 @@ class DQNDynamic:
             cumulative_loss += loss.item()
 
         # Calculate the average loss over the three batches
-        average_loss = cumulative_loss / self.config.step_train_batches
+        average_loss = cumulative_loss / self.config.train.step_train_batches
 
         # Log loss and metric
         wandb.log({"train/loss": average_loss,
