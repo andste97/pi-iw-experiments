@@ -29,7 +29,7 @@ class DQNDynamic:
             config = OmegaConf.create(config)
 
         run = wandb.init(
-            project="pi-iw-experiments-piiw",
+            project="train-batches-experiments",
             id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
             config=OmegaConf.to_container(config),
             # offline=True,
