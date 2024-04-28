@@ -1,15 +1,15 @@
-import pygraphviz
+import hashlib
+from hashlib import sha1
 
 from tree_utils.node import Node
-from utils.utils import cstr
 import networkx as nx
 import matplotlib.pyplot as plt
-import numpy as np
 
+h = hashlib.new('sha1')
 
 def visualize_tree_with_observations(node: Node, fname):
     G = nx.DiGraph()
-    G.add_node(node, obs=node.data["obs"][0])
+    add_node_to_graph(G, node)
     create_networkx_graph(node, G)
     create_tree_layout_with_observations(G)
     plt.savefig(fname, bbox_inches='tight', pad_inches=0)
@@ -17,7 +17,7 @@ def visualize_tree_with_observations(node: Node, fname):
 
 def visualize_tree_no_observations(node: Node, path):
     G = nx.DiGraph()
-    G.add_node(node, obs=node.data["obs"][0])
+    G.add_node(node, obs=node.data["obs"][3])
     create_networkx_graph(node, G)
     plt.figure(figsize=(25, 15))
     create_tree_layout(G)
@@ -25,7 +25,7 @@ def visualize_tree_no_observations(node: Node, path):
 
 def create_networkx_graph(node: Node, G: nx.DiGraph):
     for child in node.children:
-        G.add_node(child, obs=node.data["obs"][0], R=int(node.data["R"]))
+        add_node_to_graph(G, child)
         if child.pruned:
             edge_color="red"
         else:
@@ -33,6 +33,13 @@ def create_networkx_graph(node: Node, G: nx.DiGraph):
 
         G.add_edge(node, child, a=child.data["a"], color=edge_color)
         create_networkx_graph(child, G)
+
+
+def add_node_to_graph(G, node):
+    features = [x[1] for x in node.data["features"]]
+    h.update(bytearray(features))
+    features = h.hexdigest()[-16:]
+    G.add_node(node, obs=node.data["obs"][3], R=int(node.data["R"]), features=features)
 
 
 def create_tree_layout(G: nx.DiGraph):
@@ -95,5 +102,5 @@ def create_tree_layout_with_observations(G: nx.DiGraph):
         # get overlapped axes and plot icon
         a = plt.axes([xa - icon_center, ya - icon_center, icon_size, icon_size])
         a.imshow(G.nodes[n]["obs"])
+        a.text(pos[n][0], pos[n][1], G.nodes[n]["features"])
         a.axis("off")
-

@@ -116,6 +116,19 @@ def display_image_cv2(window_name, image, block_ms=1, size=None):
     cv2.imshow(window_name, cv2.cvtColor(image.astype(np.float32), cv2.COLOR_RGB2BGR)) # cv2 works with BGR (and also displays it like that)
     cv2.waitKey(block_ms) # shows image and waits for this amout of ms (or until we close the window if 0 is passed)
 
+def transform_obs_to_image(obs):
+    """This function transforms an observation consisting of 4 atari images into a single
+    4x4 image. Upper-left side will be the 1st image, upper right 2nd, lower left 3rd,
+    and lower right 4th.
+    Each single image needs to be a grayscale numpy array of shape: (width, height), values uint8."""
+
+    # Horizontal stacking
+    top_half = np.hstack([obs[0], obs[1]])  # Combine a1 (upper left) and a2 (upper right)
+    bottom_half = np.hstack([obs[2], obs[3]])  # Combine a3 (lower left) and a4 (lower right)
+
+    # Vertical stacking
+    return np.vstack([top_half, bottom_half])
+
 
 class AnsiSpecial:
     BOLD = '\033[1m'

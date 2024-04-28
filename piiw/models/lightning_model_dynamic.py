@@ -23,6 +23,7 @@ from utils.utils import softmax, sample_pmf, reward_in_tree, display_image_cv2
 from utils.pytorch_utils import configure_optimizer_based_on_config
 from visualization.visualize_tree_with_observations import visualize_tree_with_observations
 import sys
+import os
 
 
 class LightningDQNDynamic(pl.LightningModule):
@@ -134,8 +135,7 @@ class LightningDQNDynamic(pl.LightningModule):
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
             n_action_space=self.env.action_space.n,
-            softmax_temp=self.config.plan.softmax_temperature,
-            should_visualize=True
+            softmax_temp=self.config.plan.softmax_temperature
         )
         self.episode_reward += r
 
@@ -292,6 +292,7 @@ class LightningDQNDynamic(pl.LightningModule):
         step_action = sample_pmf(policy_output)
 
         if should_visualize:
+            from visualization.visualize_tree_with_observations import visualize_tree_with_observations
             visualize_tree_with_observations(tree.root, f'../reports/output_steps/ep_{self.episodes}_step_{self.episode_step}.png')
 
         prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
