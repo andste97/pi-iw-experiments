@@ -1,6 +1,5 @@
 import numpy as np
 import logging
-import h5py
 import cv2
 from distutils.util import strtobool
 import argparse
