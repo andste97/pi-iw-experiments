@@ -56,7 +56,7 @@ class DQNDynamic:
             add_value=config.model.add_value,
             use_dynamic_features=config.model.use_dynamic_features
         )
-        wandb.watch(model, log_freq=50)
+        # wandb.watch(model, log_freq=50) deactivated due to large logs on HPC
 
         self.device = 'cpu'
         if torch.cuda.is_available():
@@ -157,7 +157,8 @@ class DQNDynamic:
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
             n_action_space=self.env.action_space.n,
-            softmax_temp=self.config.plan.softmax_temperature
+            softmax_temp=self.config.plan.softmax_temperature,
+            should_visualize=False
         )
         self.episode_reward += r
 
