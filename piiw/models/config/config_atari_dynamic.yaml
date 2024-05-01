@@ -32,7 +32,7 @@ train:
   learning_rate: 0.0005
   replay_capacity: 10000
   replay_init_capacity: 100 #minimum size needed is batch size
-  total_interaction_budget: 40000000
+  total_interaction_budget: 20000000
   l2_reg_factor: 0.001
   clip_grad_norm: 40
   rmsprop_alpha: 0.99 # same as rho in tf
