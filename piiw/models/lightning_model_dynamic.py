@@ -95,7 +95,7 @@ class LightningDQNDynamic(pl.LightningModule):
             ignore_cached_nodes=True
         )
 
-        self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget() or reward_in_tree(tree))
+        self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget())
 
         self.tree = self.actor.reset()
         self.episode_step = 0
