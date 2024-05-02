@@ -221,7 +221,7 @@ class LightningDQNDynamic(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         tree = self.actor.reset()
-        episode_rewards = 0
+        episode_rewards = []
 
         test_results = ExperienceReplay(
             capacity=self.config.train.replay_capacity,
@@ -229,6 +229,10 @@ class LightningDQNDynamic(pl.LightningModule):
         )
 
         images = []
+
+        img = self.env.render(mode='rgb_array')
+        img = np.transpose(img, axes=[2, 0, 1])
+        images.append(img)
 
         for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
             r, episode_done = self.planning_step(
@@ -242,15 +246,23 @@ class LightningDQNDynamic(pl.LightningModule):
                 n_action_space=self.env.action_space.n,
                 softmax_temp=self.config.plan.softmax_temperature
             )
-            images.append(self.actor.render(tree, size=(200,200)))
-            episode_rewards += r
-            wandb.log({'test/rewards': episode_rewards})
+
+            # set env to root tree, otherwise env is set to last visited state in planner
+            self.env.restore_state(tree.root.data["s"])
+
+            # transform and add rgb image to output
+            img = self.env.render(mode='rgb_array')
+            img = np.transpose(img, axes=[2,0,1])
+            images.append(img)
+            episode_rewards.append(r)
+            wandb.log({'test/rewards': episode_rewards[-1]})
 
             if episode_done:
                 wandb.log({'test/episode_steps': i})
                 break
 
-        wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
+        wandb.log({"test/video": wandb.Video(np.array(images), fps=5, format="mp4")})
+        wandb.log({"test/total_test_reward": np.sum(episode_rewards)})
         return OrderedDict({'testing_rewards': episode_rewards})
 
     def planning_step(self,

@@ -17,7 +17,7 @@ def visualize_tree_with_observations(node: Node, fname):
 
 def visualize_tree_no_observations(node: Node, path):
     G = nx.DiGraph()
-    G.add_node(node, obs=node.data["obs"][3])
+    G.add_node(node, obs=node.data["obs"][-1])
     create_networkx_graph(node, G)
     plt.figure(figsize=(25, 15))
     create_tree_layout(G)
@@ -39,7 +39,7 @@ def add_node_to_graph(G, node):
     features = [x[1] for x in node.data["features"]]
     h.update(bytearray(features))
     features = h.hexdigest()[-16:]
-    G.add_node(node, obs=node.data["obs"][3], R=int(node.data["R"]), features=features)
+    G.add_node(node, obs=node.data["obs"][-1], R=int(node.data["R"]), features=features)
 
 
 def create_tree_layout(G: nx.DiGraph):
