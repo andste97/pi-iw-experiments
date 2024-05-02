@@ -125,7 +125,8 @@ class DQNDynamic:
         )
         return optimizer
 
-    def fit(self):
+    def fit(self,
+            save_checkpoint_every_n_episodes):
         while self.total_interactions.within_budget():
             self.train_episode()
 
@@ -139,9 +140,10 @@ class DQNDynamic:
             self.episode_step = 0
             self.episode_reward = 0
 
-            chkpoint_path = os.path.join(f"./logs/{wandb.run.name}/ep_{self.episodes}_step_{self.episode_step}.ckpt")
-            self.save_checkpoint(chkpoint_path)
-            wandb.log_model(chkpoint_path)
+            if self.episodes % save_checkpoint_every_n_episodes == 0:
+                chkpoint_path = os.path.join(f"./logs/{wandb.run.name}/ep_{self.episodes}_step_{self.episode_step}.ckpt")
+                self.save_checkpoint(chkpoint_path)
+                wandb.log_model(chkpoint_path)
 
     def train_episode(self):
         for i in tqdm(range(self.config.train.episode_length), desc=f'Episode {self.episodes}'):
@@ -189,6 +191,52 @@ class DQNDynamic:
 
         self.episode_step += 1
         return episode_done
+
+    def test_model(self):
+        tree = self.actor.reset()
+        episode_rewards = []
+
+        test_results = ExperienceReplay(
+            capacity=self.config.train.replay_capacity,
+            keys=self.config.train.experience_keys
+        )
+
+        images = []
+
+        img = self.env.render(mode='rgb_array')
+        img = np.transpose(img, axes=[2, 0, 1])
+        images.append(img)
+
+        for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
+            r, episode_done = self.planning_step(
+                actor=self.actor,
+                planner=self.planner,
+                interactions=self.interactions,
+                dataset=test_results,
+                tree=tree,
+                cache_subtree=self.config.plan.cache_subtree,
+                discount_factor=self.config.plan.discount_factor,
+                n_action_space=self.env.action_space.n,
+                softmax_temp=self.config.plan.softmax_temperature
+            )
+
+            # set env to root tree, otherwise env is set to last visited state in planner
+            self.env.restore_state(tree.root.data["s"])
+
+            # transform and add rgb image to output
+            img = self.env.render(mode='rgb_array')
+            img = np.transpose(img, axes=[2, 0, 1])
+            images.append(img)
+            episode_rewards.append(r)
+            wandb.log({'test/rewards': episode_rewards[-1]})
+
+            if episode_done:
+                wandb.log({'test/episode_steps': i})
+                break
+
+        wandb.log({"test/video": wandb.Video(np.array(images), fps=5, format="mp4")})
+        wandb.log({"test/total_test_reward": np.sum(episode_rewards)})
+        return OrderedDict({'testing_rewards': episode_rewards})
 
     def applicable_actions_fn(self):
         env_actions = list(range(self.env.action_space.n))
@@ -242,41 +290,6 @@ class DQNDynamic:
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
 
         return dynamic_policy_output
-
-    def test_model(self):
-        tree = self.actor.reset()
-        episode_rewards = 0
-
-        # test_interactions = InteractionsCounter(budget=self.config.plan.interactions_budget)
-        test_results = ExperienceReplay(
-            capacity=self.config.train.replay_capacity,
-            keys=self.config.train.experience_keys
-        )
-
-        images = []
-
-        for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
-            r, episode_done = self.planning_step(
-                actor=self.actor,
-                planner=self.planner,
-                interactions=self.interactions,
-                dataset=test_results,
-                tree=tree,
-                cache_subtree=self.config.plan.cache_subtree,
-                discount_factor=self.config.plan.discount_factor,
-                n_action_space=self.env.action_space.n,
-                softmax_temp=self.config.plan.softmax_temperature
-            )
-            images.append(self.actor.render(tree, size=(200,200)))
-            episode_rewards += r
-            wandb.log({'test/rewards': episode_rewards})
-
-            if episode_done:
-                wandb.log({'test/episode_steps': i})
-                break
-
-        wandb.log({"test/video": wandb.Video(np.array(images), fps=5)})
-        return OrderedDict({'testing_rewards': episode_rewards})
 
     def planning_step(self,
                       actor,
