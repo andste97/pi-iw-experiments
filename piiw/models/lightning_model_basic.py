@@ -89,7 +89,7 @@ class LightningDQN(pl.LightningModule):
             branching_factor=self.env.action_space.n
         )
 
-        self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget() or reward_in_tree(tree))
+        self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget())
 
         self.tree = self.actor.reset()
         self.episode_step = 0
