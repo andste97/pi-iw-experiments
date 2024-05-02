@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 from datetime import datetime
 
@@ -137,6 +138,10 @@ class DQNDynamic:
             self.tree = self.actor.reset()
             self.episode_step = 0
             self.episode_reward = 0
+
+            chkpoint_path = os.path.join(f"./logs/{wandb.run.name}/ep_{self.episodes}_step_{self.episode_step}.ckpt")
+            self.save_checkpoint(chkpoint_path)
+            wandb.log_model(chkpoint_path)
 
     def train_episode(self):
         for i in tqdm(range(self.config.train.episode_length), desc=f'Episode {self.episodes}'):
@@ -310,6 +315,22 @@ class DQNDynamic:
                         "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
         return current_root.data["r"], current_root.data["done"]
 
+    def save_checkpoint(self, path):
+        """Saves a checkpoint containing all important information for resuming training or starting testing.
+        If folders in this path do not exist, they will be created."""
+
+        dirs_in_path = path.rsplit("/", 1)[0]
+        os.makedirs(dirs_in_path, exist_ok=True)
+
+        torch.save({
+            'episode': self.episodes,
+            'step': self.episode_step,
+            'episode_reward': self.episode_reward,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'config': self.config,
+            'tree': self.tree
+        }, path)
 
 def network_policy(node):
     return node.data["probs"]
