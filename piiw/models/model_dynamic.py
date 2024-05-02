@@ -104,7 +104,7 @@ class DQNDynamic:
             ignore_cached_nodes=True
         )
 
-        self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget() or reward_in_tree(tree))
+        self.planner.add_stop_fn(lambda tree: not self.interactions.within_budget())
 
         self.tree = self.actor.reset()
         self.episode_step = 0
@@ -130,8 +130,12 @@ class DQNDynamic:
         while self.total_interactions.within_budget():
             self.train_episode()
 
+            if self.episodes % save_checkpoint_every_n_episodes == 0:
+                chkpoint_path = os.path.join(f"./logs/{wandb.run.name}/ep_{self.episodes}_step_{self.episode_step}.ckpt")
+                self.save_checkpoint(chkpoint_path)
+                wandb.log_model(chkpoint_path)
+
             # log stuff and reset after episode is done
-            self.episodes += 1
             wandb.log({'train/episode': float(self.episodes),
                        'train/episode_steps': float(self.episode_step),
                        'train/episode_reward': self.episode_reward,
@@ -139,11 +143,7 @@ class DQNDynamic:
             self.tree = self.actor.reset()
             self.episode_step = 0
             self.episode_reward = 0
-
-            if self.episodes % save_checkpoint_every_n_episodes == 0:
-                chkpoint_path = os.path.join(f"./logs/{wandb.run.name}/ep_{self.episodes}_step_{self.episode_step}.ckpt")
-                self.save_checkpoint(chkpoint_path)
-                wandb.log_model(chkpoint_path)
+            self.episodes += 1
 
     def train_episode(self):
         for i in tqdm(range(self.config.train.episode_length), desc=f'Episode {self.episodes}'):
@@ -193,8 +193,10 @@ class DQNDynamic:
         return episode_done
 
     def test_model(self):
+        """Runs a test episode, creates a video of the interactions"""
         tree = self.actor.reset()
         episode_rewards = []
+        previous_root = tree.root
 
         test_results = ExperienceReplay(
             capacity=self.config.train.replay_capacity,
@@ -220,8 +222,14 @@ class DQNDynamic:
                 softmax_temp=self.config.plan.softmax_temperature
             )
 
-            # set env to root tree, otherwise env is set to last visited state in planner
-            self.env.restore_state(tree.root.data["s"])
+            # Need to reset env, as otherwise rendered image is last image created by planner,
+            # i.e. some node in the planning tree
+            # For this, we need to set th env to the previous root and take a step, as the buffered
+            # RGB only changes after a step (and not directly after a restore)
+            # See: https://stackoverflow.com/questions/62334284/how-to-restore-previous-state-to-gym-environment
+            self.env.restore_state(previous_root.data["s"])
+            self.env.step(tree.root.data["a"])
+            previous_root = tree.root
 
             # transform and add rgb image to output
             img = self.env.render(mode='rgb_array')

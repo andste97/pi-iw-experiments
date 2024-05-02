@@ -25,7 +25,7 @@ def main(config):
 
     # choose wither to uses dynamic or BASIC features
     model = DQNDynamic(config)
-    model.fit()
+    model.fit(save_checkpoint_every_n_episodes=3)
 
     model.test_model()
 
