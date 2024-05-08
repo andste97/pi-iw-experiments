@@ -17,23 +17,23 @@ from data.experience_replay import ExperienceReplay
 from planners.rollout_IW import RolloutIW
 from tree_utils.tree_actor import EnvTreeActor
 from utils.interactions_counter import InteractionsCounter
-from utils.utils import softmax, sample_pmf, reward_in_tree, display_image_cv2
-from atari_utils.atari_wrappers import is_atari_env
+from utils.utils import softmax, sample_pmf
 
 
 class DQNDynamic:
     """The model used by MNIH 2013 paper of DQN."""
 
     def __init__(self,
-                 config):
+                 config,
+                 group_name=None):
         if not OmegaConf.is_config(config):
             config = OmegaConf.create(config)
 
         run = wandb.init(
             project="train-batches-experiments",
-            id=f'{config.train.env_id.replace("ALE/", "")}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
+            id=f'{config.train.env_id}_{config.train.seed}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
             config=OmegaConf.to_container(config),
-            # offline=True,
+            group=group_name
         )
 
         self.config = config
