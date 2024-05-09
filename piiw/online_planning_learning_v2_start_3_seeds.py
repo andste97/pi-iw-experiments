@@ -56,7 +56,7 @@ def start_run(seed, config, group_name):
 
     # choose wither to uses dynamic or BASIC features
     model = DQNDynamic(config, group_name)
-    model.fit(save_checkpoint_every_n_episodes=200)
+    model.fit(save_checkpoint_every_n_episodes=500)
 
     model.test_model()
 
