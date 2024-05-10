@@ -1,4 +1,5 @@
 import os
+import sys
 from collections import OrderedDict
 from datetime import datetime
 
@@ -109,6 +110,8 @@ class DQNDynamic:
         self.tree = self.actor.reset()
         self.episode_step = 0
         self.episodes = 0
+        self.aux_replay = []
+        self.best_episode_reward = -sys.maxsize - 1
         self.initialize_experience_replay(self.config.train.batch_size)
         self.episode_reward = 0
         self.episode_done = False
@@ -135,6 +138,15 @@ class DQNDynamic:
                 self.save_checkpoint(chkpoint_path)
                 wandb.log_model(chkpoint_path)
 
+            if (
+                not self.config.train.add_only_better_rewards_to_dataset
+                or
+                self.episode_reward >= self.best_episode_reward
+            ):
+                self.best_episode_reward = self.episode_reward
+                self.experience_replay.append_all(self.aux_replay)
+            self.reset_aux_replay()
+
             # log stuff and reset after episode is done
             wandb.log({'train/episode': float(self.episodes),
                        'train/episode_steps': float(self.episode_step),
@@ -159,7 +171,7 @@ class DQNDynamic:
             actor=self.actor,
             planner=self.planner,
             interactions=self.interactions,
-            dataset=self.experience_replay,
+            aux_replay=self.aux_replay,
             tree=self.tree,
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
@@ -198,11 +210,6 @@ class DQNDynamic:
         episode_rewards = []
         previous_root = tree.root
 
-        test_results = ExperienceReplay(
-            capacity=self.config.train.replay_capacity,
-            keys=self.config.train.experience_keys
-        )
-
         images = []
 
         img = self.env.render(mode='rgb_array')
@@ -214,7 +221,7 @@ class DQNDynamic:
                 actor=self.actor,
                 planner=self.planner,
                 interactions=self.interactions,
-                dataset=test_results,
+                aux_replay=[],
                 tree=tree,
                 cache_subtree=self.config.plan.cache_subtree,
                 discount_factor=self.config.plan.discount_factor,
@@ -256,13 +263,13 @@ class DQNDynamic:
         # make sure we cannot get stuck in infinite loop
         assert self.config.train.replay_capacity >= warmup_length
 
-        while len(self.experience_replay) < warmup_length:
-            cur_length = len(self.experience_replay)
+        while len(self.aux_replay) < warmup_length:
+            cur_length = len(self.aux_replay)
             r, episode_done = self.planning_step(
                 actor=self.actor,
                 planner=self.planner,
                 interactions=self.interactions,
-                dataset=self.experience_replay,
+                aux_replay=self.aux_replay,
                 tree=self.tree,
                 cache_subtree=self.config.plan.cache_subtree,
                 discount_factor=self.config.plan.discount_factor,
@@ -270,11 +277,16 @@ class DQNDynamic:
                 softmax_temp=self.config.plan.softmax_temperature
             )
             # self.actor.render(size=(800, 800), tree=self.tree)
-            pbar.update(len(self.experience_replay) - cur_length)
+            pbar.update(len(self.aux_replay) - cur_length)
             if episode_done:
                 self.tree = self.actor.reset()
 
+        self.experience_replay.append_all(self.aux_replay)
+        self.reset_aux_replay()
         self.tree = self.actor.reset()
+
+    def reset_aux_replay(self):
+        self.aux_replay = []
 
     def train_dataloader(self) -> DataLoader:
         """Initialize the Replay Buffer dataset used for retrieving experiences"""
@@ -303,7 +315,7 @@ class DQNDynamic:
                       actor,
                       planner,
                       interactions,
-                      dataset,
+                      aux_replay,
                       tree,
                       cache_subtree,
                       discount_factor,
@@ -332,7 +344,7 @@ class DQNDynamic:
 
         tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)
 
-        dataset.append({"observations": tensor_pytorch_format,
+        aux_replay.append({"observations": tensor_pytorch_format,
                         "target_policy": torch.tensor(policy_output, dtype=torch.float32)})
         return current_root.data["r"], current_root.data["done"]
 

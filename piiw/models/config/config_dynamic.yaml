@@ -40,6 +40,7 @@ train:
   rmsprop_alpha: 0.99 # same as rho in tf
   rmsprop_epsilon: 0.1
   add_returns: False
+  add_only_better_rewards_to_dataset: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
   step_train_batches: 1
   atari_frameskip: 15

@@ -145,7 +145,11 @@ class LightningDQNDynamic(pl.LightningModule):
         # end of episode/epoch logging needs to go here
         # because it doesn't get logged in on_train_batch_start
         if self.episode_done:
-            if self.episode_reward >= self.best_episode_reward:
+            if (
+                    not self.config.train.add_only_better_rewards_to_dataset
+                    or
+                    self.episode_reward >= self.best_episode_reward
+            ):
                 self.best_episode_reward = self.episode_reward
                 self.experience_replay.append_all(self.aux_replay)
             self.reset_aux_replay()
