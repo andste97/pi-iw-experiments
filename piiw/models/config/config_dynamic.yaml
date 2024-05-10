@@ -20,7 +20,7 @@ plan:
   interactions_budget: 50
   width: 1  # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
   discount_factor: 0.99
-  cache_subtree: True
+  cache_subtree: False
   softmax_temperature: 1
 
 train:
@@ -41,6 +41,7 @@ train:
   rmsprop_epsilon: 0.1
   add_returns: False
   experience_keys: ["observations", "target_policy"] # can also add "returns" here
+  step_train_batches: 1
   atari_frameskip: 15
   max_epochs: 300 # number of epochs the trainer will train the model for
   max_steps: 40000 # max number of steps the trainer will train the model for

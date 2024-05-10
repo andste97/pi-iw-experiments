@@ -1,5 +1,9 @@
 import numpy as np
 
+from utils.interactions_counter import InteractionsCounter
+from utils.utils import display_image_cv2
+
+
 def reward_in_tree(tree):
     """Check if any nodes within this tree contain a reward
 
@@ -45,7 +49,6 @@ if __name__ == "__main__":
     import gym
     from tree_utils.tree_actor import EnvTreeActor
     from planners.rollout_IW import RolloutIW
-    from utils import InteractionsCounter
     import timeit
     import gridenvs.examples  # register GE environments to gym
     # import gridenvs.examples  # gym registration always gets lost during refactoring
@@ -98,6 +101,10 @@ if __name__ == "__main__":
     tree = actor.reset()
     planner.initialize(tree=tree)
     planner.plan(tree=tree)
+    #get_img = lambda obs: obs[-1] if type(obs) is list else obs
+    #root_img = get_img(tree.root.data["obs"]) / 255
+    #display_image_cv2(env_id, root_img, block_ms=100000, size=(800,800), image_filename=f"./logs/{env_id}.png")
+
     nodes_generated = len(tree)
     time = timeit.default_timer() - start_time
     print("Planner:", planner.__class__.__name__)
