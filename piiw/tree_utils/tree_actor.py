@@ -119,7 +119,7 @@ class EnvTreeActor:
         for child in tree.root.children:
             for node in child.breadth_first():
                 image += 0.4 / 255.0 * (get_img(node.data["obs"])-root_img)
-                display_image_cv2(window_name, cv2.resize(image, size, interpolation=cv2.INTER_AREA), block_ms=frametime)
+                display_image_cv2(window_name, image, block_ms=frametime, size=size)
 
     def compute_returns(self, tree, discount_factor, add_value, use_value_all_nodes=False):
         """Computes rewards for entire tree, starting with last node in tree.

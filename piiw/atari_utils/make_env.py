@@ -4,11 +4,18 @@ from atari_utils.atari_wrappers import is_atari_env, wrap_atari_env
 import numpy as np
 import logging as logger
 
-def make_env(env_id, max_episode_steps, atari_frameskip):
-    # Create the gym environment. When creating it with gym.make(), gym usually puts a TimeLimit wrapper around an env.
-    # We'll take this out since we will most likely reach the step limit (when restoring the internal state of the
-    # emulator the step count of the wrapper will not reset)
-    env = gym.make(env_id, frameskip=atari_frameskip)
+def make_env(env_id: str, max_episode_steps: int, atari_frameskip: int):
+
+    if(env_id.startswith('GE')):
+        # Gridenv does not support frameskip parameter
+        env = gym.make(env_id)
+    else:
+        # Create the gym environment for Atari.
+        # When creating it with gym.make(), gym usually puts a TimeLimit wrapper around an env.
+        # We'll take this out since we will most likely reach the step limit (when restoring the internal state of the
+        # emulator the step count of the wrapper will not reset)
+        env = gym.make(env_id, frameskip=atari_frameskip)
+
 
     if env_has_wrapper(env, gym.wrappers.TimeLimit):
         env = remove_env_wrapper(env, gym.wrappers.TimeLimit)

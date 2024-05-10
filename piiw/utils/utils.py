@@ -99,7 +99,7 @@ def remove_env_wrapper(env, wrapper_type):
     return env
 
 
-def display_image_cv2(window_name, image, block_ms=1, size=None):
+def display_image_cv2(window_name, image, block_ms=1, size=None, image_filename=None):
     """
     Displays the given image with OpenCV2 in a window with the given name. It may also block until the window is close
     if block_ms is None, or for the given milliseconds. If 0 is given, it will actually block for 1ms, which is the
@@ -110,9 +110,18 @@ def display_image_cv2(window_name, image, block_ms=1, size=None):
     elif block_ms is None: block_ms = 0 # 0 means until we close the window (None for us)
     assert block_ms >= 0
     if issubclass(image.dtype.type, np.integer): image = image.astype(np.float32)/255
+
+    if(image.shape[0] == 3): # PIL-style RGB image with channels at beginning. Need to convert to opencv format
+        image = np.transpose(image, (1, 2, 0))
     if size is not None:
         image = cv2.resize(image, size, interpolation=cv2.INTER_AREA)
-    cv2.imshow(window_name, cv2.cvtColor(image.astype(np.float32), cv2.COLOR_RGB2BGR)) # cv2 works with BGR (and also displays it like that)
+
+    image = cv2.cvtColor(image.astype(np.float32), cv2.COLOR_RGB2BGR)
+
+    if image_filename is not None:
+        cv2.imwrite(filename=image_filename, img=image*255)
+
+    cv2.imshow(window_name, image) # cv2 works with BGR (and also displays it like that)
     cv2.waitKey(block_ms) # shows image and waits for this amout of ms (or until we close the window if 0 is passed)
 
 def transform_obs_to_image(obs):
