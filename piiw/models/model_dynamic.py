@@ -139,7 +139,7 @@ class DQNDynamic:
                 wandb.log_model(chkpoint_path)
 
             if (
-                not self.config.train.add_only_better_rewards_to_dataset
+                self.config.train.add_also_worse_episodes_to_dataset
                 or
                 self.episode_reward >= self.best_episode_reward
             ):
