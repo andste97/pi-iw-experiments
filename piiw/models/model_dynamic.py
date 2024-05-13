@@ -151,7 +151,8 @@ class DQNDynamic:
             wandb.log({'train/episode': float(self.episodes),
                        'train/episode_steps': float(self.episode_step),
                        'train/episode_reward': self.episode_reward,
-                       'total_interactions': float(self.total_interactions.value),})
+                       'total_interactions': float(self.total_interactions.value),
+                       'train/replay_buffer_size': len(self.experience_replay)})
             self.tree = self.actor.reset()
             self.episode_step = 0
             self.episode_reward = 0
