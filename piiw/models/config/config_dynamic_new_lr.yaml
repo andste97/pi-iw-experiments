@@ -1,7 +1,7 @@
 # This configuration is the same as the default config, but with
 # a newer learning rate found during a hyperparameter search in the gridenv world
 
-project_name: "pi-iw-experiments-piiw"
+project_name: "delayed_experience_replay"
 model:
   conv1_in_channels: 3
   conv1_out_channels: 16 # also conv1 out_channels

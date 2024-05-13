@@ -3,7 +3,7 @@
 # and using the adam optimizer. The adam optimizer seemed to provide more stable result
 # during this hyperparameter search:
 
-project_name: "pi-iw-experiments-piiw"
+project_name: "delayed_experience_replay"
 model:
   conv1_in_channels: 3
   conv1_out_channels: 16 # also conv1 out_channels

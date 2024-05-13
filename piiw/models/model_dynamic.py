@@ -31,7 +31,7 @@ class DQNDynamic:
             config = OmegaConf.create(config)
 
         run = wandb.init(
-            project="train-batches-experiments",
+            project=config.project_name,
             id=f'{config.train.env_id}_{config.train.seed}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
             config=OmegaConf.to_container(config),
             group=group_name
