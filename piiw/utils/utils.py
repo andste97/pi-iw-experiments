@@ -1,8 +1,8 @@
 import numpy as np
 import logging
 import cv2
-from distutils.util import strtobool
-import argparse
+import os
+import wandb
 
 logger = logging.getLogger(__name__)
 
@@ -179,3 +179,12 @@ def reward_in_tree(tree):
         if node.data["r"] > 0:
             return True
     return False
+
+def create_folders_in_path(path):
+    dirs_in_path = path.rsplit("/", 1)[0]
+    os.makedirs(dirs_in_path, exist_ok=True)
+
+def generate_logdir_path():
+    """Generates the path for logging artefacts before upload to wandb. Path will be created without
+    trailing /"""
+    return os.path.join(f"./logs/{wandb.run.name}")

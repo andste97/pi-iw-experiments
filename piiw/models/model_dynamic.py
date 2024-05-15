@@ -3,6 +3,7 @@ import sys
 from collections import OrderedDict
 from datetime import datetime
 
+from moviepy.video.io import ffmpeg_writer
 from omegaconf import OmegaConf
 import torch
 from torch.utils.data import DataLoader
@@ -18,7 +19,7 @@ from data.experience_replay import ExperienceReplay
 from planners.rollout_IW import RolloutIW
 from tree_utils.tree_actor import EnvTreeActor
 from utils.interactions_counter import InteractionsCounter
-from utils.utils import softmax, sample_pmf
+from utils.utils import softmax, sample_pmf, create_folders_in_path, generate_logdir_path
 
 
 class DQNDynamic:
@@ -134,7 +135,7 @@ class DQNDynamic:
             self.train_episode()
 
             if self.episodes % save_checkpoint_every_n_episodes == 0:
-                chkpoint_path = os.path.join(f"./logs/{wandb.run.name}/ep_{self.episodes}_step_{self.episode_step}.ckpt")
+                chkpoint_path = os.path.join(f"{generate_logdir_path()}/ep_{self.episodes}_step_{self.episode_step}.ckpt")
                 self.save_checkpoint(chkpoint_path)
                 wandb.log_model(chkpoint_path)
 
@@ -211,11 +212,16 @@ class DQNDynamic:
         episode_rewards = []
         previous_root = tree.root
 
-        images = []
+        video_path = f"{generate_logdir_path()}/test_video.mp4"
+        create_folders_in_path(video_path)
 
         img = self.env.render(mode='rgb_array')
-        img = np.transpose(img, axes=[2, 0, 1])
-        images.append(img)
+        writer = ffmpeg_writer.FFMPEG_VideoWriter(
+            video_path,
+            (img.shape[1], img.shape[0]), 5, codec='libx264'
+        )
+
+        writer.write_frame(img)
 
         for i in tqdm(range(self.config.train.episode_length), desc="Running tests"):
             r, episode_done = self.planning_step(
@@ -241,8 +247,7 @@ class DQNDynamic:
 
             # transform and add rgb image to output
             img = self.env.render(mode='rgb_array')
-            img = np.transpose(img, axes=[2, 0, 1])
-            images.append(img)
+            writer.write_frame(img)
             episode_rewards.append(r)
             wandb.log({'test/rewards': episode_rewards[-1]})
 
@@ -250,7 +255,8 @@ class DQNDynamic:
                 wandb.log({'test/episode_steps': i})
                 break
 
-        wandb.log({"test/video": wandb.Video(np.array(images), fps=5, format="mp4")})
+        writer.close()
+        wandb.log({"test/video": wandb.Video(video_path, fps=5, format="mp4")})
         wandb.log({"test/total_test_reward": np.sum(episode_rewards)})
         return OrderedDict({'testing_rewards': episode_rewards})
 
@@ -353,8 +359,7 @@ class DQNDynamic:
         """Saves a checkpoint containing all important information for resuming training or starting testing.
         If folders in this path do not exist, they will be created."""
 
-        dirs_in_path = path.rsplit("/", 1)[0]
-        os.makedirs(dirs_in_path, exist_ok=True)
+        create_folders_in_path(path)
 
         torch.save({
             'episode': self.episodes,
