@@ -1,5 +1,5 @@
 project_name: "delayed_experience_replay"
-env_suite: ["Pong-v4", "CrazyClimber-v4"] #, "ChopperCommand-v4", "Breakout-v4", "PrivateEye-v4"] # used when running on multiple envs all at once
+env_suite: ["Pong-v4", "CrazyClimber-v4", "ChopperCommand-v4", "Breakout-v4", "PrivateEye-v4"] # used when running on multiple envs all at once
 
 model:
   conv1_in_channels: 4
