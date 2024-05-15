@@ -1,4 +1,6 @@
 project_name: "pi-iw-experiments-piiw"
+env_suite: ["Pong-v4", "CrazyClimber-v4"] #, "ChopperCommand-v4", "Breakout-v4", "PrivateEye-v4"] # used when running on multiple envs all at once
+
 model:
   conv1_in_channels: 4
   conv1_out_channels: 16 # also conv1 out_channels
