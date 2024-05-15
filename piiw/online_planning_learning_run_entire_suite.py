@@ -27,7 +27,7 @@ def main(config):
     process_info = {}
 
     for env_id in config.env_suite:
-        group_name = f'group_{config.train.env_id}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}'
+        group_name = f'group_{env_id}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}'
         for seed in seeds:
             process = multiprocessing.Process(target=start_run, args=(env_id, seed, config, group_name))
             processes.append(process)
