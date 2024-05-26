@@ -24,7 +24,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
                                         features_name=features_name,
                                         branching_factor=branching_factor,
                                         n_features=n_features, n_values=n_values)
-        self.uniform_policy_fn = lambda n: np.full(self.branching_factor, 1 / self.branching_factor)
+        self.uniform_policy_fn = lambda n, _: np.full(self.branching_factor, 1 / self.branching_factor)
         self.set_policy_fn(policy_fn)
         self.min_cum_prob = min_cum_prob  # Prune when the cumulative probability of the remaining (not solved) actions is lower than this threshold
         self.ensure_same_initialization = ensure_same_initialization
@@ -75,7 +75,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
         tree.root.novelty_table = novelty_table
         tree.root.next_rollout_random = False
 
-    def plan(self, tree):
+    def plan(self, tree, softmax_temp):
         """
         :param tree: Tree to begin expanding nodes. It can contain just the root node (for offline planning or online
         planning without caching nodes), or an many (cached) nodes.
@@ -84,12 +84,12 @@ class RolloutIW(RolloutLabelsWidthPlanner):
         novelty_table = tree.root.novelty_table
 
         while not self.should_stop(tree) and not tree.root.solved:  # TODO: avoid checking condition twice (here and Rollout while loop)
-            node, a = self.select(tree.root, novelty_table, random=tree.root.next_rollout_random)
+            node, a = self.select(tree.root, novelty_table, softmax_temp, random=tree.root.next_rollout_random)
             if a is not None:
                 assert node is not None
-                self.rollout(tree, node, a, novelty_table, random=tree.root.next_rollout_random)
+                self.rollout(tree, node, a, novelty_table, softmax_temp, random=tree.root.next_rollout_random)
 
-    def select(self, node: Node, novelty_table, random):
+    def select(self, node: Node, novelty_table, softmax_temp, random):
         """
         Traverses the tree from node on and selects a node and an action that have not yet been expanded.
         :param node: Node where the tree traversing starts from.
@@ -104,7 +104,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
                 self.solve_and_propagate_label(node)
                 return None, None  # Prune node
 
-            a, child = self.select_action_following_policy(node, random=random)
+            a, child = self.select_action_following_policy(node, softmax_temp, random=random)
             assert child is None or (
                         not child.solved and not child.data["done"]), "Solved: %s.  Done: %s.  Depth: %s" % (
             str(child.solved), str(child.data["done"]), str(child.depth))
@@ -119,7 +119,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
                 else:
                     node = child  # Continue traversing the tree
 
-    def select_action_following_policy(self, node: Node, random):
+    def select_action_following_policy(self, node: Node, softmax_temp, random):
         """
         Selects an action according to the policy given by _get_policy() (default is uniform distribution). It only
         takes into account nodes that have not been solved yet: it sets probabilities of already solved nodes to 0 and
@@ -132,9 +132,9 @@ class RolloutIW(RolloutLabelsWidthPlanner):
         :return: A tuple (action, successor), (action, None) or (None, None).
         """
         if random:
-            policy = self.uniform_policy_fn(node)
+            policy = self.uniform_policy_fn(node, softmax_temp)
         else:
-            policy = self.policy_fn(node)
+            policy = self.policy_fn(node, softmax_temp)
 
         if node.is_leaf():
             # return action to expand
@@ -175,7 +175,7 @@ class RolloutIW(RolloutLabelsWidthPlanner):
 
         return a, child
 
-    def rollout(self, tree, node: Node, a, novelty_table, random):
+    def rollout(self, tree, node: Node, a, novelty_table, softmax_temp, random):
         while not self.should_stop(tree):
             node = self.generate_successor(tree, node, a)
             assert node is not None, "Successor function not properly defined?"  # Can't use AbstractTreeActor here
@@ -183,6 +183,6 @@ class RolloutIW(RolloutLabelsWidthPlanner):
 
             if node.solved:
                 break
-            a, child = self.select_action_following_policy(node, random=random)
+            a, child = self.select_action_following_policy(node, softmax_temp, random=random)
             assert a is not None and child is None, "Action: %s, child: %s" % (str(a), str(child))
         return node

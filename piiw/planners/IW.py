@@ -26,7 +26,7 @@ class IW(BFSWidthPlanner):
         tree.root.queue = queue
         tree.root.novelty_table = novelty_table
 
-    def plan(self, tree):
+    def plan(self, tree, softmax_temp):
         """
         :param tree: Tree to begin expanding nodes. It can contain just the root node (for offline planning or online
         planning without caching nodes), or an many (cached) nodes.

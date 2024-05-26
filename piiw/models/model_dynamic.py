@@ -156,7 +156,11 @@ class DQNDynamic:
 
     def training_step(self, batch):
         observations, target_policy = batch
+        start_softmax = 3
+        end_softmax = 0.2
+        end_softmax_interactions = 1500000
 
+        softmax_temp = max(end_softmax, start_softmax - self.total_interactions.value / end_softmax_interactions)
         r, episode_done = self.planning_step(
             actor=self.actor,
             planner=self.planner,
@@ -166,7 +170,7 @@ class DQNDynamic:
             cache_subtree=self.config.plan.cache_subtree,
             discount_factor=self.config.plan.discount_factor,
             n_action_space=self.env.action_space.n,
-            softmax_temp=self.config.plan.softmax_temperature,
+            softmax_temp=softmax_temp,
             should_visualize=False
         )
         self.episode_reward += r
@@ -189,7 +193,8 @@ class DQNDynamic:
 
         # Log loss and metric
         wandb.log({"train/loss": average_loss,
-                   'total_interactions': float(self.total_interactions.value)})
+                   'total_interactions': float(self.total_interactions.value),
+                   "train/softmax_temp": softmax_temp})
 
         self.episode_step += 1
         return episode_done
@@ -299,7 +304,7 @@ class DQNDynamic:
 
             with torch.no_grad():
                 logits, features = model(x)
-            node.data["probs"] = softmax(np.array(logits.to("cpu").ravel()), temp=self.config.plan.softmax_temperature)
+            node.data["probs"] = np.array(logits.to("cpu").ravel())
             node.data["features"] = list(
                 enumerate(features.to("cpu").numpy().ravel().astype(bool)))  # discretization -> bool
 
@@ -319,7 +324,7 @@ class DQNDynamic:
                       ):
         interactions.reset_budget()
         planner.initialize(tree=tree)
-        planner.plan(tree=tree)
+        planner.plan(tree=tree, softmax_temp=softmax_temp)
 
         actor.compute_returns(tree, discount_factor=discount_factor, add_value=False)
 
@@ -358,8 +363,8 @@ class DQNDynamic:
             'tree': self.tree
         }, path)
 
-def network_policy(node):
-    return node.data["probs"]
+def network_policy(node, softmax_temp):
+    return softmax(node.data["probs"], temp=softmax_temp)
 
 
 def sample_best_action(node, n_actions, discount_factor):

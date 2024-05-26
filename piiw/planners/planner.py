@@ -28,5 +28,5 @@ class Planner:
     def initialize(self, tree):
         pass
 
-    def plan(self, tree):
+    def plan(self, tree, softmax_temp):
         raise NotImplementedError()
