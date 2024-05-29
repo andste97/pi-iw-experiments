@@ -158,9 +158,9 @@ class DQNDynamic:
         observations, target_policy = batch
         start_softmax = 3
         end_softmax = 0.2
-        end_softmax_interactions = 10000000
+        end_softmax_interactions = 15000000
 
-        softmax_temp = max(end_softmax, start_softmax - self.total_interactions.value / end_softmax_interactions)
+        softmax_temp = max(end_softmax, start_softmax - start_softmax * (self.total_interactions.value / end_softmax_interactions))
         r, episode_done = self.planning_step(
             actor=self.actor,
             planner=self.planner,
