@@ -149,13 +149,11 @@ class DQNDynamic:
 
     def train_episode(self):
         for i in tqdm(range(self.config.train.episode_length), desc=f'Episode {self.episodes}'):
-            batch = next(iter(self.trainloader))
-            episode_done = self.training_step(batch)
+            episode_done = self.training_step()
             if episode_done:
                 break
 
-    def training_step(self, batch):
-        observations, target_policy = batch
+    def training_step(self):
         start_softmax = 3
         end_softmax = 0.2
         end_softmax_interactions = 15000000
@@ -180,6 +178,7 @@ class DQNDynamic:
         # Initialize a variable to store the cumulative loss
         cumulative_loss = 0.0
         for i in range(0, self.config.train.step_train_batches):
+            observations, target_policy = next(iter(self.trainloader))
             self.optimizer.zero_grad()
             self.model = self.model.to(self.device)
             logits, features = self.model(observations.to(self.device))
