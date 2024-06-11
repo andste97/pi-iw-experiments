@@ -347,6 +347,7 @@ class DQNDynamic:
             from visualization.visualize_tree_with_observations import visualize_tree_with_observations
             visualize_tree_with_observations(tree.root, f'../reports/output_steps/ep_{self.episodes}_step_{self.episode_step}.png')
 
+        wandb.log({"train/tree_depth": tree.max_depth(), "train/tree_size": len(tree)})
         prev_root_data, current_root = actor.step(tree, step_action, cache_subtree=cache_subtree)
 
         tensor_pytorch_format = torch.tensor(np.array(prev_root_data["obs"]), dtype=torch.float32)

@@ -56,6 +56,9 @@ class Tree:
         for n in node.breadth_first():
             self._nodes.remove(n)
 
+    def max_depth(self) -> int:
+        return max([node.depth for node in self._nodes])
+
     def detatch_subtree(self, node, copy_and_keep_node):
         if copy_and_keep_node:
             new_tree = Tree(root_data=node.data)
