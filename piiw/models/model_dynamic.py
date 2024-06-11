@@ -36,7 +36,7 @@ class DQNDynamic:
             id=f'{config.train.env_id}_{config.train.seed}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
             config=OmegaConf.to_container(config),
             group=group_name,
-            mode='offline'
+            #mode='offline'
         )
 
         self.config = config
