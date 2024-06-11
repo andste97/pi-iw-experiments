@@ -18,19 +18,17 @@ def get_average_of_last_n_points(runs, metric, n=5):
 # Replace 'your_entity' and 'your_project' with your actual wandb entity and project name
 api = wandb.Api()
 entity = "piiw-thesis"
-project = "train-batches-experiments"
+project = "pi-iw-experiments-piiw"
 
 # Get runs from the project
 runs = api.runs(f"{entity}/{project}")
 
 # Filter runs by a specific group, if needed (optional)
 group_names = [
-    "group_PrivateEye-v4_2024-05-12_10-17-35.802616",
-    "group_Breakout-v4_2024-05-12_10-17-06.035540",
-    "group_ChopperCommand-v4_2024-05-11_12-45-15.106984",
-    "group_MsPacman-v4_2024-05-11_12-45-14.964376",
-    "group_CrazyClimber-v4_2024-05-10_10-41-43.915636",
-    "group_Pong-v4_2024-05-10_10-41-43.921360"
+    "group_Breakout-v4_2024-06-02_13-25-01.928315",
+    "group_ChopperCommand-v4_2024-06-02_13-25-01.928297",
+    "group_MsPacman-v4_2024-06-02_13-25-01.928277",
+    "group_Pong-v4_2024-06-02_13-25-01.928230"
     ]# Set this to your specific group names if needed
 
 for group_name in group_names:

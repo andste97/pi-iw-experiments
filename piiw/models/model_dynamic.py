@@ -8,6 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from atari_utils.atari_wrappers import is_atari_env
 from atari_utils.make_env import make_env
 from models.mnih_2013 import Mnih2013
 import numpy as np
@@ -34,7 +35,8 @@ class DQNDynamic:
             project=config.project_name,
             id=f'{config.train.env_id}_{config.train.seed}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")}',
             config=OmegaConf.to_container(config),
-            group=group_name
+            group=group_name,
+            mode='offline'
         )
 
         self.config = config
@@ -327,7 +329,12 @@ class DQNDynamic:
         planner.initialize(tree=tree)
         planner.plan(tree=tree, softmax_temp=softmax_temp)
 
-        actor.compute_returns(tree, discount_factor=discount_factor, add_value=False)
+        actor.compute_returns(
+            tree,
+            discount_factor=discount_factor,
+            current_lives= tree.root.data["ale.lives"] if is_atari_env(self.env) else 0,
+            risk_averse=self.config.plan.risk_averse
+        )
 
         step_Q = sample_best_action(node=tree.root,
                                     n_actions=n_action_space,

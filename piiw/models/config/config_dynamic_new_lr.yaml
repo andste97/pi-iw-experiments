@@ -25,6 +25,7 @@ plan:
   discount_factor: 0.99
   cache_subtree: True
   softmax_temperature: 1
+  risk_averse: False
 
 train:
   env_id: "GE_MazeKeyDoor-v2"

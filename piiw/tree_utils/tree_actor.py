@@ -1,4 +1,6 @@
 import numpy as np
+
+from atari_utils.atari_wrappers import is_atari_env
 from tree_utils.tree import Tree
 from utils.utils import env_has_wrapper, display_image_cv2
 import cv2
@@ -61,12 +63,14 @@ class EnvTreeActor:
 
     def reset(self):
         obs = self.env.reset()
-        tree = Tree({"obs": obs, "done": False, "r": None})
+        tree = Tree({"obs": obs, "done": False, "r": 0})
         self._observe(tree.root)
         return tree
 
     def _observe(self, node):
         node.data["s"] = self.env.clone_state()
+        if is_atari_env(self.env):
+            node.data["ale.lives"] = self.env.unwrapped.ale.lives()
         for fn in self.observe_fns:
             fn(node)
         self.simulator_node = node
@@ -121,7 +125,7 @@ class EnvTreeActor:
                 image += 0.4 / 255.0 * (get_img(node.data["obs"])-root_img)
                 display_image_cv2(window_name, image, block_ms=frametime, size=size)
 
-    def compute_returns(self, tree, discount_factor, add_value, use_value_all_nodes=False):
+    def compute_returns(self, tree, discount_factor, current_lives, risk_averse=False):
         """Computes rewards for entire tree, starting with last node in tree.
 
         If add_value is true, the value from predictions is added to """
@@ -131,9 +135,21 @@ class EnvTreeActor:
         # each level deeper gets discounted once by multiplying with discount_factor.
         for node in tree.iter_breadth_first_reverse():
             if node.is_leaf():
-                R = node.data["r"]
+                if node.data["ale.lives"] < current_lives:
+                    R = -10 * 50000 + node.data["r"] if risk_averse else node.data["r"]
+                elif node.data["r"] < 0:
+                    R = node.data["r"] * 50000 if node.data["r"] else node.data["r"]
+                else:
+                    R = node.data["r"]
             else:
-                R = np.max([child.data["r"] + discount_factor * child.data["R"] for child in node.children])
+                if node.data["ale.lives"] < current_lives:
+                    cost = -10 * 50000 if risk_averse else 0
+                    R = cost + node.data["r"] + discount_factor * np.max([child.data["R"] for child in node.children])
+                elif node.data["r"] < 0:
+                    cost = node.data["r"] * 50000 if risk_averse else node.data["r"]
+                    R = cost + discount_factor * np.max([child.data["R"] for child in node.children])
+                else:
+                    R = node.data["r"] + discount_factor * np.max([child.data["R"] for child in node.children])
             node.data["R"] = R
 
     def get_counts(self, tree, n_actions):
