@@ -156,12 +156,14 @@ class DQNDynamic:
                 break
 
     def training_step(self):
-        start_softmax = 3
-        end_softmax = 0.5
-        end_softmax_interactions = 17000000
+        start_softmax = self.config.plan.start_softmax
+        end_softmax = self.config.plan.end_softmax
+        end_softmax_interactions = self.config.plan.end_softmax_interactions
 
-        #softmax_temp = max(end_softmax, start_softmax - start_softmax * (self.total_interactions.value / end_softmax_interactions))
-        softmax_temp = self.config.plan.softmax_temperature
+        if self.config.plan.softmax_decay:
+            softmax_temp = max(end_softmax, start_softmax - start_softmax * (self.total_interactions.value / end_softmax_interactions))
+        else:
+            softmax_temp = self.config.plan.softmax_temperature
 
         r, episode_done = self.planning_step(
             actor=self.actor,

@@ -24,7 +24,11 @@ plan:
   width: 1  # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
   discount_factor: 0.99
   cache_subtree: True
-  softmax_temperature: 1
+  softmax_temperature: 0.5 # value if using fixed softmax temperature
+  softmax_decay: False # whether to use fixed softmax temp (False) or softmax decay
+  start_softmax: 3 # the initial softmax temperature
+  end_softmax: 0.5 # the end temperature after softmax decay
+  end_softmax_interactions: 17000000 # after how many interactions the end of the softmax decay value should be reached
   risk_averse: False
 
 train:
