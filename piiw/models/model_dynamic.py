@@ -157,10 +157,10 @@ class DQNDynamic:
 
     def training_step(self):
         start_softmax = 3
-        end_softmax = 0.2
-        end_softmax_interactions = 15000000
+        end_softmax = 0.5
+        end_softmax_interactions = 17000000
 
-        # softmax_temp = max(end_softmax, start_softmax - start_softmax * (self.total_interactions.value / end_softmax_interactions))
+        #softmax_temp = max(end_softmax, start_softmax - start_softmax * (self.total_interactions.value / end_softmax_interactions))
         softmax_temp = self.config.plan.softmax_temperature
 
         r, episode_done = self.planning_step(

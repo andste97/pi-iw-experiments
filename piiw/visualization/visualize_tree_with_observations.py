@@ -1,13 +1,15 @@
 import hashlib
-from hashlib import sha1
 
 from tree_utils.node import Node
 import networkx as nx
 import matplotlib.pyplot as plt
 
+from utils.utils import create_folders_in_path
+
 h = hashlib.new('sha1')
 
 def visualize_tree_with_observations(node: Node, fname):
+    create_folders_in_path(fname)
     G = nx.DiGraph()
     add_node_to_graph(G, node)
     create_networkx_graph(node, G)
