@@ -23,7 +23,7 @@ plan:
   interactions_budget: 50
   width: 1  # if we use width 1 here, the planner fails. This is a width 2 problem so this is expected.
   discount_factor: 0.99
-  cache_subtree: True
+  cache_subtree: False
   softmax_temperature: 0.5 # value if using fixed softmax temperature
   softmax_decay: False # whether to use fixed softmax temp (False) or softmax decay
   start_softmax: 3 # the initial softmax temperature
