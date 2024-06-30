@@ -38,27 +38,13 @@ To overwrite the list and train only on e.g. Pong, add the following command lin
 
 `'env_suite=["Pong-v4"]'`
 
-## Docker containers
-
-### Commands to build docker containers
-1. Training container: `docker build -f dockerfiles/train_model.dockerfile . -t andi97/piiw_trainer:latest`
-
-### Commands to run docker containers
-The docker containers are set up without an entrypoint. 
-
-#### Running the training container:
-`docker run -v ./data:/data -v ./models:/models -e WANDB_API_KEY='<your-api-key>' andi97/piiw_trainer:latest python3 ./piiw/online_planning_learning_lightning.py`
-
-IMPORTANT: to add GPU support to a container, add the flag `--gpus all` to above command, like so:
-
-`docker run -v ./data:/data -v ./models:/models -e WANDB_API_KEY='<your-api-key>' --gpus all andi97/piiw_trainer:latest python3 ./piiw/online_planning_learning_lightning.py`
-
 Other params:
 
 We use hydra for our config. See their documentation for how to overwrite/add config values.
 See: https://hydra.cc/docs/advanced/override_grammar/basic/
 
-To overwrite the config to be used, use the key `--config-name <config_name.yaml>`
+To overwrite the config to be used, use the key `--config-name <config_name.yaml>`. The config file needs to be
+in the folder `piiw/models/config`.
 
 ## Submitting jobs to HPC
 
